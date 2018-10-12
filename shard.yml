@@ -1,0 +1,9 @@
+name: crystal-rethinkdb
+version: 0.1.0
+
+authors:
+  - Kingsley Hendrickse <kingsley.hendrickse@gmail.com>
+
+crystal: 0.26.1
+
+license: MIT
