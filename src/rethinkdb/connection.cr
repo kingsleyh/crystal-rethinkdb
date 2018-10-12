@@ -1,5 +1,6 @@
 require "socket"
 require "json"
+require "./crypto"
 
 class ConnectionException < Exception
 end
@@ -20,6 +21,14 @@ class ConnectionResponse
   end
 end
 
+class ScrumAuthMessage1
+  JSON.mapping(
+    protocol_version:      Int32,
+    authentication_method: String,
+    authentication:        String
+  )
+end
+
 class Connection
 
   V1_0 = 0x34c2bdc3_u32
@@ -29,6 +38,11 @@ class Connection
   def initialize(host : String, port : Int32)
     @socket = TCPSocket.new(host, port)
     @connection_details = connect
+  end
+
+  def authorise(user : String, password : String)
+    client_nonce = Random::Secure.base64(14)
+    write((ScrumAuthMessage1.new(0, "SCRAM-SHA-256", "n,,n=#{user},r=#{client_nonce}").to_json + "\0").to_slice))
   end
 
   private def connect : ConnectionResponse
@@ -51,4 +65,5 @@ end
 
 
 c = Connection.new("localhost", 28015)
-p c.connection_details
+c.connection_details
+p c.authorise("woop", "password")
