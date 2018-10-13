@@ -32,7 +32,7 @@ class AuthMessage1
   )
 end
 
-class AuthMessage1ErrorResponse
+class AuthMessageErrorResponse
   JSON.mapping(
     error: String,
     error_code: Int64,
@@ -71,6 +71,17 @@ class AuthMessage3
   )
 end
 
+class AuthMessage3SuccessResponse
+  JSON.mapping(
+    authentication: String,
+    success: Bool
+  )
+
+  def v
+    authentication.split("v=").last
+  end
+end
+
 class Connection
 
   V1_0 = 0x34c2bdc3_u32
@@ -86,44 +97,35 @@ class Connection
     client_nonce = Random::Secure.base64(14)
     message1 = "n,,n=#{user},r=#{client_nonce}"
     write((AuthMessage1.new(0, "SCRAM-SHA-256", message1).to_json + "\0").to_slice)
-    # data = read
-    json = JSON.parse(data = read)
+    json = JSON.parse(data1 = read)
 
     if(json["success"].as_bool)
-      response = AuthMessage1SuccessResponse.from_json(data)
-      iteration_count = response.i
-      salt = response.s
+      response = AuthMessage1SuccessResponse.from_json(data1)
       combined_nonce = response.r
+      salt = response.s
+      iteration_count = response.i
 
-      client_key = sha256(hmac_sha256(pbkdf2_hmac_sha256(password.to_slice, salt, iteration_count), "Client Key"))
+      client_key = hmac_sha256(pbkdf2_hmac_sha256(password, salt, iteration_count), "Client Key")
+      stored_key = sha256(client_key)
       message3_start = "c=biws,r=#{combined_nonce}"
       auth_message = message1[3..-1] + "," + response.authentication + "," + message3_start
-      client_signature = hmac_sha256(client_key, auth_message)
+      client_signature = hmac_sha256(stored_key, auth_message)
       client_proof = Bytes.new(client_signature.size)
       client_proof.size.times do |i|
         client_proof[i] = client_key[i] ^ client_signature[i]
       end
 
-      message3 = AuthMessage3.new(combined_nonce, Base64.strict_encode(client_proof))
+      write((AuthMessage3.new(combined_nonce, Base64.strict_encode(client_proof)).to_json + "\0").to_slice)
+      json = JSON.parse(data2 = read)
+      if(json["success"].as_bool)
+        AuthMessage3SuccessResponse.from_json(data2)
+      else
+        error = AuthMessageErrorResponse.from_json(data2)
+        raise ReqlError::ReqlDriverError::ReqlAuthError.new("error_code: #{error.error_code}, error: #{error.error}")
+      end
 
-      p message3.to_json
-      # password_hash = pbkdf2_hmac_sha256(password.to_slice, salt, iter)
-      #
-      # message3_start = "c=biws,r=#{nonce_c}#{nonce_s}"
-      #
-      # client_key = hmac_sha256(password_hash, "Client Key")
-      # stored_key = sha256(client_key)
-      # auth_message = message1[3..-1] + "," + message2 + "," + message3_start
-      # client_signature = hmac_sha256(stored_key, auth_message)
-      # client_proof = Bytes.new(client_signature.size)
-      # client_proof.size.times do |i|
-      #   client_proof[i] = client_key[i] ^ client_signature[i]
-      # end
-      #
-      # message3 = "c=biws,r=#{nonce_c}#{nonce_s},p=#{Base64.strict_encode(client_proof)}"
-      #
     else
-      error = AuthMessage1ErrorResponse.from_json(data)
+      error = AuthMessageErrorResponse.from_json(data1)
       raise ReqlError::ReqlDriverError::ReqlAuthError.new("error_code: #{error.error_code}, error: #{error.error}")
     end
 
@@ -154,4 +156,4 @@ end
 
 c = Connection.new("localhost", 28015)
 c.connection_details
-p c.authorise("woop", "password")
+p c.authorise("cat", "secret")
