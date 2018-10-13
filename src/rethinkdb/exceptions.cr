@@ -19,6 +19,9 @@ require "json"
 class ReqlError < Exception
 end
 
+class ReqlError::ClientError < Exception
+end
+
 class ReqlError::ReqlCompileError < Exception
 end
 
