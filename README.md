@@ -20,7 +20,7 @@ Add this to your application's `shard.yml`:
 
 ```yaml
 dependencies:
-  rethinkdb:
+  crystal-rethinkdb:
     github: kingsleyh/crystal-rethinkdb
 ```
 
