@@ -5,13 +5,17 @@ module RethinkDB
     def info
       RowTerm.new(TermType::INFO, [self])
     end
-    
+
     def insert(doc)
       DatumTerm.new(TermType::INSERT, [self, doc])
     end
 
     def get(key)
       RowTerm.new(TermType::GET, [self, key])
+    end
+
+    def delete
+      DatumTerm.new(TermType::DELETE, [self])
     end
 
     def index_create(key)
