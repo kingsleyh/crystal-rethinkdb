@@ -87,7 +87,7 @@ end
 
 struct Time
   def to_reql
-    Hash(String, JSON::Any){"$reql_type$" => "TIME", "timezone" => "+00:00", "epoch_time" => to_utc.epoch}.as JSON::Any
+    JSON.parse({"$reql_type$" => "TIME", "timezone" => "+00:00", "epoch_time" => to_utc.epoch}.to_json)
   end
 
   struct Span
