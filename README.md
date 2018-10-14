@@ -29,7 +29,7 @@ dependencies:
 This library is meant to be compactible with RethinkDB's Ruby API. Thus, all [official documentation](http://rethinkdb.com/api/ruby/) should be valid here. If you find something that behaves differently, please [open an issue](https://github.com/kingsleyh/crystal-rethinkdb/issues/new).
 
 ```crystal
-require "rethinkdb"
+require "crystal-rethinkdb"
 include RethinkDB::Shortcuts
 
 # Let’s connect and create a table:
