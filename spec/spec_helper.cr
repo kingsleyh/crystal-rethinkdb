@@ -1,5 +1,5 @@
 require "spec"
-require "../src/rethinkdb"
+require "../src/crystal-rethinkdb"
 include RethinkDB::Shortcuts
 
 module Generators
@@ -46,7 +46,7 @@ module Fixtures
     else
       STDERR.puts "Unable to identify running instance of RethinkDB. Run it at 'localhost' or 'rethinkdb'."
       exit
-    end 
+    end
 
     def self.host
       @@host
