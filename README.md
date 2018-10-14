@@ -68,7 +68,7 @@ Something to note is that depending on the query you write you could get back on
 
 ##### Inserting
 
-```
+```crystal
 r.table("users").insert({
                       name: name, email: email, password: password,
                       activeChannel: {} of String => String,
@@ -78,31 +78,31 @@ r.table("users").insert({
                     ).run(@connection)
 ```
 
-```
+```crystal
 r.table("messages").insert({channelId: channelId, userId: userId, content: content, date: r.now.to_iso8601}).run(@connection)
 ```
 
 ##### Finding All
 
-```
+```crystal
 r.table("users").map{|u|
          {id: u["id"], name: u["name"], isOnline: u["isOnline"]}
       }.run(@connection) }
 ```
 
-```
+```crystal
 r.table("users").filter{|u| r.expr(u["groups"]).contains(groupId) }.map{|u|
          {id: u["id"], name: u["name"], isOnline: u["isOnline"]}
       }.run(@connection) 
 ```
 
-```
+```crystal
 r.table("groups").map{|g|
          {id: g["id"], name: g["name"], landingChannel: r.table("channels").filter({isLanding: true, groupId: g["id"]})[0]["id"]}
       }.run(@connection)
 ```
 
-```
+```crystal
 r.table("users").filter({id: userId}).map{|user|
                         {
                          channels: r.table("channels").filter{|ch| ch["groupId"] == groupId}.coerce_to("array"),
@@ -117,11 +117,11 @@ r.table("users").filter({id: userId}).map{|user|
 
 ##### Finding One
 
-```
+```crystal
 r.table("users").get(userId).run(@connection)
 ```
 
-```
+```crystal
   r.table("users").filter({id: userId}).map{|user|
                         {
                         channels: r.table("channels").filter{|ch| r.expr(user["channels"]).contains(ch["id"])}.filter{|ch| ch["groupId"] == groupId}.coerce_to("array"),
@@ -136,11 +136,11 @@ r.table("users").get(userId).run(@connection)
 
 ##### Updates
 
-```
+```crystal
 r.table("users").get(userId).update({isOnline: isOnline}).run(@connection)
 ```
 
-```
+```crystal
 r.table("users").get(userId).update{|u|
         {channels: u.get_field("channels").set_insert(channelId),
          groups: u.get_field("groups").set_insert(groupId),
@@ -149,13 +149,13 @@ r.table("users").get(userId).update{|u|
       }.run(@connection) }
 ```
 
-```
+```crystal
 r.table("users").get(userId).update{|u| {groups: u.get_field("groups").set_insert(groupId)}}.run(@connection)
 ```
 
 ##### Creating a database
 
-```
+```crystal
 def recreate_database
       puts "dropping database: #{@env.database.name}"
 
