@@ -56,6 +56,131 @@ p r.table("tv_shows").filter {|show| show["episodes"] > 100 }.run(conn).to_a
 ```
 
 
+## Useful Queries
+
+Here are some more complex queries - mostly as a reminder to myself on how to do various more complicated things:
+
+Something to note is that depending on the query you write you could get back one of these 3 things:
+
+* RethinkDB::QueryResult
+* RethinkDB:Cursor
+* RethinkDB::Array(RethinkDB::QueryResult)
+
+##### Inserting
+
+```
+r.table("users").insert({
+                      name: name, email: email, password: password,
+                      activeChannel: {} of String => String,
+                      channels: [] of String, groups: [] of String,
+                      isOnline: false
+                      }
+                    ).run(@connection)
+```
+
+```
+r.table("messages").insert({channelId: channelId, userId: userId, content: content, date: r.now.to_iso8601}).run(@connection)
+```
+
+##### Finding All
+
+```
+r.table("users").map{|u|
+         {id: u["id"], name: u["name"], isOnline: u["isOnline"]}
+      }.run(@connection) }
+```
+
+```
+r.table("users").filter{|u| r.expr(u["groups"]).contains(groupId) }.map{|u|
+         {id: u["id"], name: u["name"], isOnline: u["isOnline"]}
+      }.run(@connection) 
+```
+
+```
+r.table("groups").map{|g|
+         {id: g["id"], name: g["name"], landingChannel: r.table("channels").filter({isLanding: true, groupId: g["id"]})[0]["id"]}
+      }.run(@connection)
+```
+
+```
+r.table("users").filter({id: userId}).map{|user|
+                        {
+                         channels: r.table("channels").filter{|ch| ch["groupId"] == groupId}.coerce_to("array"),
+                         activeChannel: r.branch(user["activeChannel"].has_fields("channelId"),
+                                          {groupId: user["activeChannel"]["groupId"], channelId: user["activeChannel"]["channelId"], name: r.table("channels").get(user["activeChannel"]["channelId"])["name"]},
+                                          {groupId: "", channelId: "", name: ""}),
+                         groupId: r.table("groups").get(groupId)["id"],
+                         name: r.table("groups").get(groupId)["name"]
+                         }
+                       }.run(@connection)
+```
+
+##### Finding One
+
+```
+r.table("users").get(userId).run(@connection)
+```
+
+```
+  r.table("users").filter({id: userId}).map{|user|
+                        {
+                        channels: r.table("channels").filter{|ch| r.expr(user["channels"]).contains(ch["id"])}.filter{|ch| ch["groupId"] == groupId}.coerce_to("array"),
+                        groups: r.table("groups").filter{|g| r.expr(user["groups"]).contains(g["id"])}.map{|g| {id: g["id"], name: g["name"], landingChannel: r.table("channels").filter({isLanding: true, groupId: g["id"]})[0]["id"]}}.coerce_to("array"),
+                        messages: r.table("messages").filter{|m| m["channelId"] == channelId }.map{|m| {messageId: m["id"], userId: m["userId"], name: r.table("users").get(m["userId"])["name"], content: m["content"], date: m["date"]} }.coerce_to("array"),
+                        channel: r.table("channels").get(channelId),
+                        group: r.table("groups").get(groupId),
+                        userIsOnline: user["isOnline"]
+                        }
+                      }.run(@connection).to_a.first
+```
+
+##### Updates
+
+```
+r.table("users").get(userId).update({isOnline: isOnline}).run(@connection)
+```
+
+```
+r.table("users").get(userId).update{|u|
+        {channels: u.get_field("channels").set_insert(channelId),
+         groups: u.get_field("groups").set_insert(groupId),
+         activeChannel: {groupId: groupId, channelId: channelId}
+        }
+      }.run(@connection) }
+```
+
+```
+r.table("users").get(userId).update{|u| {groups: u.get_field("groups").set_insert(groupId)}}.run(@connection)
+```
+
+##### Creating a database
+
+```
+def recreate_database
+      puts "dropping database: #{@env.database.name}"
+
+      begin
+        r.db_drop(@env.database.name).run( @connection)
+      rescue ex
+        puts ex.message
+      end
+
+      puts "creating database: #{@env.database.name}"
+      r.db_create(@env.database.name).run(@connection)
+
+      # add tables
+      puts "adding tables: users, groups, channels, messages"
+      r.db(@env.database.name).table_create("users").run(@connection)
+      r.db(@env.database.name).table_create("groups").run(@connection)
+      r.db(@env.database.name).table_create("channels").run(@connection)
+      r.db(@env.database.name).table_create("messages").run(@connection)
+
+      puts "done"
+    end
+```
+
+
+
 ## Contributing
 
 1. Fork it (<https://github.com/your-github-user/crystal-rethinkdb/fork>)
