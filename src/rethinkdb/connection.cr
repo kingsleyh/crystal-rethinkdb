@@ -1,156 +1,136 @@
 require "socket"
+require "socket/tcp_socket"
 require "json"
+require "./serialization"
+require "./constants"
 require "./crypto"
-require "./exceptions"
-
-struct RunOpts
-  getter native_binary : Bool
-
-  def initialize(hash : Hash = {} of String => Nil)
-    @native_binary = (hash["binaryFormat"]? || hash["binary_format"]?) != "raw"
-  end
-
-  def to_json(io)
-    runopts = Hash(String, JSON::Type).new
-    if !@native_binary
-      runopts["binary_format"] = "raw"
-    end
-    runopts.to_json(io)
-  end
-end
-
-class ConnectionException < Exception
-end
-
-class ConnectionResponse
-  JSON.mapping(
-    max_protocol_version: Int32,
-    min_protocol_version: Int32,
-    server_version: String,
-    success: Bool
-  )
-
-  def self._from_json(json)
-    begin
-      ConnectionResponse.from_json(json.not_nil!)
-    rescue error
-      raise ConnectionException.new(json)
-    end
-  end
-end
-
-class AuthMessage1
-  def initialize(@protocol_version : Int32, @authentication_method : String, @authentication : String)
-  end
-
-  JSON.mapping(
-    protocol_version: Int32,
-    authentication_method: String,
-    authentication: String
-  )
-end
-
-class AuthMessageErrorResponse
-  JSON.mapping(
-    error: String,
-    error_code: Int64,
-    success: Bool
-  )
-end
-
-class AuthMessage1SuccessResponse
-  JSON.mapping(
-    authentication: String,
-    success: Bool
-  )
-
-  def r
-    value_for("r")
-  end
-
-  def s
-    Base64.decode(value_for("s"))
-  end
-
-  def i
-    value_for("i").to_i
-  end
-
-  private def value_for(target : String)
-    authentication.split(",").select { |x| x.starts_with?("#{target}=") }.first.split("#{target}=").last
-  end
-end
-
-class AuthMessage3
-  def initialize(nonce : String, encoded_password : String)
-    @authentication = "c=biws,r=#{nonce},p=#{encoded_password}"
-  end
-
-  JSON.mapping(
-    authentication: String
-  )
-end
-
-class AuthMessage3SuccessResponse
-  JSON.mapping(
-    authentication: String,
-    success: Bool
-  )
-
-  def v
-    authentication.split("v=").last
-  end
-end
 
 module RethinkDB
-  class Connection
-    V1_0 = 0x34c2bdc3_u32
 
-    getter connection_details : ConnectionResponse
+  class ConnectionException < Exception
+  end
 
-    @channels = {} of UInt64 => Channel::Unbuffered(String)
-    @next_query_id = 1_u64
+  class ConnectionResponse
+    JSON.mapping(
+      max_protocol_version: Int32,
+      min_protocol_version: Int32,
+      server_version: String,
+      success: Bool
+    )
 
-    def initialize(host : String, port : Int32)
-      @socket = TCPSocket.new(host, port)
-      @connection_details = connect
+    def self._from_json(json)
+      begin
+        ConnectionResponse.from_json(json.not_nil!)
+      rescue error
+        raise ConnectionException.new(json)
+      end
+    end
+  end
+
+  class AuthMessage1
+    def initialize(@protocol_version : Int32, @authentication_method : String, @authentication : String)
     end
 
-    def start
+    JSON.mapping(
+      protocol_version: Int32,
+      authentication_method: String,
+      authentication: String
+    )
+  end
+
+  class AuthMessageErrorResponse
+    JSON.mapping(
+      error: String,
+      error_code: Int64,
+      success: Bool
+    )
+  end
+
+  class AuthMessage1SuccessResponse
+    JSON.mapping(
+      authentication: String,
+      success: Bool
+    )
+
+    def r
+      value_for("r")
+    end
+
+    def s
+      Base64.decode(value_for("s"))
+    end
+
+    def i
+      value_for("i").to_i
+    end
+
+    private def value_for(target : String)
+      authentication.split(",").select { |x| x.starts_with?("#{target}=") }.first.split("#{target}=").last
+    end
+  end
+
+  class AuthMessage3
+    def initialize(nonce : String, encoded_password : String)
+      @authentication = "c=biws,r=#{nonce},p=#{encoded_password}"
+    end
+
+    JSON.mapping(
+      authentication: String
+    )
+  end
+
+  class AuthMessage3SuccessResponse
+    JSON.mapping(
+      authentication: String,
+      success: Bool
+    )
+
+    def v
+      authentication.split("v=").last
+    end
+  end
+
+  class Connection
+    def initialize(options)
+      host = options[:host]? || "localhost"
+      port = options[:port]? || 28015
+      @db = options[:db]? || "test"
+      user = options[:user]? || "admin"
+      password = options[:password]? || ""
+
+      @next_id = 1u64
+      @open = true
+
+      @sock = TCPSocket.new(host, port)
+
+      connect
+      authorise(user, password)
+
+      @channels = {} of UInt64 => Channel::Unbuffered(String)
+      @next_query_id = 1_u64
+
       spawn do
-        until @socket.closed?
-          id = @socket.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
-          size = @socket.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
+        while @open
+          id = @sock.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
+          size = @sock.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
           slice = Slice(UInt8).new(size)
-          @socket.read(slice)
+          @sock.read(slice)
           @channels[id]?.try &.send String.new(slice)
         end
+        @sock.close
       end
     end
 
-    # def run(term : ReQL::Term::Type, runopts : RunOpts)
-    #     query = Query.new(self, runopts)
-    #     response = query.start(term)
-    #
-    #     case response.t
-    #     when ResponseType::SUCCESS_ATOM
-    #       return Datum.new(response.r[0].raw, runopts)
-    #     when ResponseType::SUCCESS_SEQUENCE, ResponseType::SUCCESS_PARTIAL
-    #       return Cursor.new(query, response, runopts)
-    #     else
-    #       raise "TODO"
-    #     end
-    #   end
-    #
-    #   protected def next_query_id
-    #    id = @next_query_id
-    #    @next_query_id += 1
-    #    id
-    #  end
+    private def connect : ConnectionResponse
+      protocol_version_bytes = Bytes.new(4)
+      IO::ByteFormat::LittleEndian.encode(0x34c2bdc3_u32, protocol_version_bytes)
+      write(protocol_version_bytes)
+      response = ConnectionResponse._from_json(read)
+      raise ConnectionException.new("Connection could not be established: #{response}") if response.success != true
+      response
+    end
 
-
-
-    def authorise(user : String, password : String)
+    private def authorise(user : String, password : String)
       client_nonce = Random::Secure.base64(14)
       message1 = "n,,n=#{user},r=#{client_nonce}"
       write((AuthMessage1.new(0, "SCRAM-SHA-256", message1).to_json + "\0").to_slice)
@@ -186,25 +166,162 @@ module RethinkDB
       end
     end
 
-    private def connect : ConnectionResponse
-      protocol_version_bytes = Bytes.new(4)
-      IO::ByteFormat::LittleEndian.encode(0x34c2bdc3_u32, protocol_version_bytes)
-      write(protocol_version_bytes)
-      response = ConnectionResponse._from_json(read)
-      raise ConnectionException.new("Connection could not be established: #{response}") if response.success != true
-      response
+    private def write(data)
+      @sock.write(data)
     end
 
-    def write(data)
-      @socket.write(data)
-    end
-
-    def read
-      @socket.gets('\0', true).not_nil!
+    private def read
+      @sock.gets('\0', true).not_nil!
     end
 
     def close
-      @socket.close
+      @open = false
+    end
+
+    protected def next_id
+      id = @next_id
+      @next_id += 1
+      id
+    end
+
+    class Response
+      JSON.mapping({
+        t: ResponseType,
+        r: Array(QueryResult),
+        e: {type: ErrorType, nilable: true},
+        b: {type: Array(JSON::Any), nilable: true},
+        p: {type: JSON::Any, nilable: true},
+        n: {type: Array(Int32), nilable: true}
+      })
+    end
+
+    class ResponseStream
+      getter id : UInt64
+      @channel : Channel::Unbuffered(String)
+      @runopts : Hash(String, JSON::Any)
+
+      def initialize(@conn : Connection, runopts)
+        @id = @conn.next_id
+        @channel = @conn.@channels[id] = Channel(String).new
+        @runopts = {} of String => JSON::Any
+        runopts.each do |key, val|
+          @runopts[key] = JSON.parse(val.to_json)
+        end
+        @runopts["db"] = RethinkDB.db(@conn.@db).to_reql
+      end
+
+      def query_term(term)
+        send_query [QueryType::START, term.to_reql, @runopts].to_json
+        read_response
+      end
+
+      def query_continue
+        send_query [QueryType::CONTINUE].to_json
+        read_response
+      end
+
+      private def send_query(query)
+        if @id == 0
+          raise ReqlDriverError.new("Bug: Using already finished stream.")
+        end
+
+        @conn.@sock.write_bytes(@id, IO::ByteFormat::LittleEndian)
+        @conn.@sock.write_bytes(query.bytesize, IO::ByteFormat::LittleEndian)
+        @conn.@sock.write(query.to_slice)
+      end
+
+      private def read_response
+        response = Response.from_json(@channel.receive)
+        finish unless response.t == ResponseType::SUCCESS_PARTIAL
+
+        if response.t == ResponseType::CLIENT_ERROR
+          raise ReqlClientError.new(response.r[0].to_s)
+        elsif response.t == ResponseType::COMPILE_ERROR
+          raise ReqlCompileError.new(response.r[0].to_s)
+        elsif response.t == ResponseType::RUNTIME_ERROR
+          msg = response.r[0].to_s
+          case response.e
+          when ErrorType::QUERY_LOGIC
+            raise ReqlQueryLogicError.new(msg)
+          when ErrorType::USER
+            raise ReqlUserError.new(msg)
+          when ErrorType::NON_EXISTENCE
+            raise ReqlNonExistenceError.new(msg)
+          else
+            raise ReqlRunTimeError.new(response.e.to_s + ": " + msg)
+          end
+        end
+
+        response.r = response.r.map &.transformed(
+          time_format: @runopts["time_format"]? || "native",
+          group_format: @runopts["group_format"]? || "native",
+          binary_format: @runopts["binary_format"]? || "native"
+        )
+
+        response
+      end
+
+      private def finish
+        @conn.@channels.delete @id
+        @id = 0u64
+      end
+    end
+
+    def query_error(term, runopts)
+      stream = ResponseStream.new(self, runopts)
+      response = stream.query_term(term)
+
+      raise ReqlDriverError.new("An r.error should never return successfully")
+    end
+
+    def query_datum(term, runopts)
+      stream = ResponseStream.new(self, runopts)
+      response = stream.query_term(term)
+
+      unless response.t == ResponseType::SUCCESS_ATOM
+        raise ReqlDriverError.new("Expected SUCCESS_ATOM but got #{response.t}")
+      end
+
+      response.r[0]
+    end
+
+    def query_cursor(term, runopts)
+      stream = ResponseStream.new(self, runopts)
+      response = stream.query_term(term)
+
+      unless response.t == ResponseType::SUCCESS_SEQUENCE || response.t == ResponseType::SUCCESS_PARTIAL
+        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL but got #{response.t}")
+      end
+
+      Cursor.new(stream, response)
+    end
+  end
+
+  class Cursor
+    include Iterator(QueryResult)
+
+    def initialize(@stream : Connection::ResponseStream, @response : Connection::Response)
+      @index = 0
+    end
+
+    def fetch_next
+      @response = @stream.query_continue
+      @index = 0
+
+      unless @response.t == ResponseType::SUCCESS_SEQUENCE || @response.t == ResponseType::SUCCESS_PARTIAL
+        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL but got #{@response.t}")
+      end
+    end
+
+    def next
+      while @index == @response.r.size
+        return stop if @response.t == ResponseType::SUCCESS_SEQUENCE
+        fetch_next
+      end
+
+      value = @response.r[@index]
+      @index += 1
+      return value
     end
   end
 end
