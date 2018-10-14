@@ -289,8 +289,8 @@ module RethinkDB
       stream = ResponseStream.new(self, runopts)
       response = stream.query_term(term)
 
-      unless response.t == ResponseType::SUCCESS_SEQUENCE || response.t == ResponseType::SUCCESS_PARTIAL
-        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL but got #{response.t}")
+      unless response.t == ResponseType::SUCCESS_SEQUENCE || response.t == ResponseType::SUCCESS_PARTIAL || response.t == ResponseType::SUCCESS_ATOM
+        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL or SUCCESS_ATOM but got #{response.t}")
       end
 
       Cursor.new(stream, response)

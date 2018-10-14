@@ -22,6 +22,10 @@ module RethinkDB
       RowsTerm.new(TermType::FILTER, [self, callable])
     end
 
+    def delete
+      RowsTerm.new(TermType::DELETE, [self])
+    end
+
     def filter
       RowsTerm.new(TermType::FILTER, [self, Func.arity1 {|row| yield(row) }])
     end
