@@ -55,6 +55,23 @@ p r.table("tv_shows").filter {|show| show["episodes"] > 100 }.run(conn).to_a
 # As a result, we of course get the best science fiction show in existence.
 ```
 
+### Connecting as a user
+
+If you made a user called `bob` with password `secret`:
+
+```javascript
+r.db('rethinkdb').table('users').insert({id: 'bob', password: 'secret'})
+```
+
+```crystal
+require "crystal-rethinkdb"
+include RethinkDB::Shortcuts
+
+conn = r.connect(host: "localhost", db: "my_database", user: "bob", password: "secret")
+
+```
+
+Read more about users and permissions here: [https://rethinkdb.com/docs/permissions-and-accounts/](https://rethinkdb.com/docs/permissions-and-accounts/)
 
 ## Useful Queries
 
