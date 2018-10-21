@@ -6,8 +6,8 @@ module RethinkDB
       RowTerm.new(TermType::INFO, [self])
     end
 
-    def insert(doc)
-      DatumTerm.new(TermType::INSERT, [self, doc])
+    def insert(doc, **options)
+      DatumTerm.new(TermType::INSERT, [self, doc], options)
     end
 
     def get(key)
