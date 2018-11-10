@@ -2,7 +2,7 @@
 
 This is a [RethinkDB](http://rethinkdb.com/) Driver for the [Crystal Language](http://crystal-lang.org/).
 
-[![Build Status](https://travis-ci.org/kingsleyh/crystal-rethinkdb.svg?branch=master)](https://travis-ci.org/kingsleyh/crystal-rethinkdb) [![Crystal Version](https://img.shields.io/badge/crystal%20-0.26.1-brightgreen.svg)](https://crystal-lang.org/api/0.26.1/)
+[![Build Status](https://travis-ci.org/kingsleyh/crystal-rethinkdb.svg?branch=master)](https://travis-ci.org/kingsleyh/crystal-rethinkdb) [![Crystal Version](https://img.shields.io/badge/crystal%20-0.26.1-brightgreen.svg)](https://crystal-lang.org/api/0.27.0/)
 
 ### WARNING: This is only a basic driver a lot of functions are not implemented.
 
@@ -26,7 +26,7 @@ dependencies:
 
 ## Usage
 
-This library is meant to be compactible with RethinkDB's Ruby API. Thus, all [official documentation](http://rethinkdb.com/api/ruby/) should be valid here. If you find something that behaves differently, please [open an issue](https://github.com/kingsleyh/crystal-rethinkdb/issues/new).
+This library is meant to be compatible with RethinkDB's Ruby API. Thus, all [official documentation](http://rethinkdb.com/api/ruby/) should be valid here. If you find something that behaves differently, please [open an issue](https://github.com/kingsleyh/crystal-rethinkdb/issues/new).
 
 ```crystal
 require "crystal-rethinkdb"
@@ -110,7 +110,7 @@ r.table("users").map{|u|
 ```crystal
 r.table("users").filter{|u| r.expr(u["groups"]).contains(groupId) }.map{|u|
          {id: u["id"], name: u["name"], isOnline: u["isOnline"]}
-      }.run(@connection) 
+      }.run(@connection)
 ```
 
 ```crystal

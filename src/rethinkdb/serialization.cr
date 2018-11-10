@@ -87,7 +87,7 @@ end
 
 struct Time
   def to_reql
-    JSON.parse({"$reql_type$" => "TIME", "timezone" => "+00:00", "epoch_time" => to_utc.epoch}.to_json)
+    JSON.parse({"$reql_type$" => "TIME", "timezone" => "+00:00", "epoch_time" => to_utc.to_unix}.to_json)
   end
 
   struct Span
@@ -129,7 +129,7 @@ module RethinkDB
         end
         # case hash["$reql_type$"]?
         # when "TIME"
-        #   time = Time.epoch((hash["epoch_time"].as Float64|Int64).to_i)
+        #   time = Time.unix((hash["epoch_time"].as Float64|Int64).to_i)
         #   match = (hash["timezone"].as String).match(/([+-]\d\d):(\d\d)/).not_nil!
         #   time += match[1].to_i.hours
         #   time += match[2].to_i.minutes
@@ -160,7 +160,7 @@ module RethinkDB
         obj.map {|x| QueryResult.transformed(x, time_format, group_format, binary_format).as Type }.as Type
       when Hash
         if obj["$reql_type$"]? == "TIME" && time_format == "native"
-          time = Time.epoch((obj["epoch_time"].as Float64|Int64).to_i)
+          time = Time.unix((obj["epoch_time"].as Float64|Int64).to_i)
           match = (obj["timezone"].as String).match(/([+-]\d\d):(\d\d)/).not_nil!
           time += match[1].to_i.hours
           time += match[2].to_i.minutes

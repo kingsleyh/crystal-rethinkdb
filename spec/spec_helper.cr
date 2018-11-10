@@ -9,7 +9,7 @@ module Generators
   end
 
   def self.random_table
-    "test_#{Time.now.epoch}_#{rand(10000)}_#{i}"
+    "test_#{Time.now.to_unix}_#{rand(10000)}_#{i}"
   end
 
   def self.random_table
@@ -17,7 +17,7 @@ module Generators
   end
 
   def self.random_pk
-    "pk_#{Time.now.epoch}_#{rand(100)}_#{i}"
+    "pk_#{Time.now.to_unix}_#{rand(100)}_#{i}"
   end
 
   def self.random_pk
