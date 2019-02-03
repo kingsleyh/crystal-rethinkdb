@@ -114,7 +114,7 @@ module RethinkDB
           id = @sock.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
           size = @sock.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
           slice = Slice(UInt8).new(size)
-          @sock.read(slice)
+          @sock.read_fully(slice)
           @channels[id]?.try &.send String.new(slice)
         end
         @sock.close

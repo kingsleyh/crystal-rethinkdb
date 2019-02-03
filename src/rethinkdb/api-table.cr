@@ -37,5 +37,9 @@ module RethinkDB
     def index_list
       DatumTerm.new(TermType::INDEX_LIST, [self])
     end
+
+    def sample(number : Int32)
+      DatumTerm.new(TermType::SAMPLE, [self, number])
+    end
   end
 end
