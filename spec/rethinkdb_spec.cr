@@ -2,7 +2,8 @@ require "./spec_helper"
 
 describe RethinkDB do
   it "successfuly connects to the database" do
-    conn = Fixtures::TestDB.conn
+    connection = Fixtures::TestDB.conn
+    connection.should be_a(RethinkDB::Connection)
   end
 
   it "raises unknown user error" do

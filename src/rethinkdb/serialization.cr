@@ -179,7 +179,8 @@ module RethinkDB
         obj.each do |key, value|
           result[key] = QueryResult.transformed(value, time_format, group_format, binary_format)
         end
-        return result.as Type
+
+        result.as Type
       else
         obj
       end

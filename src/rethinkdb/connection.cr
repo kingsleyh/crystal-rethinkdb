@@ -18,11 +18,9 @@ module RethinkDB
     )
 
     def self._from_json(json)
-      begin
-        ConnectionResponse.from_json(json.not_nil!)
-      rescue error
-        raise ConnectionException.new(json)
-      end
+      ConnectionResponse.from_json(json.not_nil!)
+    rescue error
+      raise ConnectionException.new(json)
     end
   end
 
@@ -64,7 +62,7 @@ module RethinkDB
     end
 
     private def value_for(target : String)
-      authentication.split(",").select { |x| x.starts_with?("#{target}=") }.first.split("#{target}=").last
+      authentication.split(",").find { |x| x.starts_with?("#{target}=") }.split("#{target}=").last
     end
   end
 
@@ -268,7 +266,7 @@ module RethinkDB
 
     def query_error(term, runopts)
       stream = ResponseStream.new(self, runopts)
-      response = stream.query_term(term)
+      stream.query_term(term)
 
       raise ReqlDriverError.new("An r.error should never return successfully")
     end
@@ -320,7 +318,7 @@ module RethinkDB
 
       value = @response.r[@index]
       @index += 1
-      return value
+      value
     end
   end
 end
