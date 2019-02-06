@@ -12,7 +12,7 @@ This driver is mostly a copy of this project: [cubos/rethinkdb.cr](https://githu
 
 Thanks to these great projects it was not too hard to create this one. Unfortunately those other 2 projects are not being maintained and the `rethinkdb.cr` project has more of the api implemented but the code is not as well structured as the newer `rethinkdb-lite` project. However `rethinkdb-lite` has a lot of missing functionality so I made the decision to fix up the original project and add in the authentication from the newer one.
 
-I will try to do more work on this library over time.
+I will try to do more work on this library over time. Thanks to [Guilherme Bernal](https://github.com/lbguilherme) for his hard work on which this project is based. 
 
 ## Installation
 
