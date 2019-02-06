@@ -7,7 +7,7 @@ module RethinkDB
     end
 
     def count
-      DatumTerm.new(TermType::COUNT, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::COUNT, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def default(value)
@@ -15,7 +15,7 @@ module RethinkDB
     end
 
     def default
-      DatumTerm.new(TermType::DEFAULT, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::DEFAULT, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def do(*args)
@@ -23,7 +23,7 @@ module RethinkDB
     end
 
     def do(*args)
-      r.do(self, *args) {|a, b, c, d, e| yield(a, b, c, d, e) }
+      r.do(self, *args) { |a, b, c, d, e| yield(a, b, c, d, e) }
     end
 
     def limit(n)
@@ -43,11 +43,11 @@ module RethinkDB
     end
 
     def filter
-      StreamTerm.new(TermType::FILTER, [self, Func.arity1 {|row| yield(row) }])
+      StreamTerm.new(TermType::FILTER, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def filter(**kargs)
-      StreamTerm.new(TermType::FILTER, [self, Func.arity1 {|row| yield(row) }], kargs)
+      StreamTerm.new(TermType::FILTER, [self, Func.arity1 { |row| yield(row) }], kargs)
     end
 
     def pluck(*args)
@@ -63,7 +63,7 @@ module RethinkDB
     end
 
     def concat_map
-      StreamTerm.new(TermType::CONCAT_MAP, [self, Func.arity1 {|row| yield(row) }])
+      StreamTerm.new(TermType::CONCAT_MAP, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def map(callable)
@@ -71,7 +71,7 @@ module RethinkDB
     end
 
     def map
-      StreamTerm.new(TermType::MAP, [self, Func.arity1 {|row| yield(row) }])
+      StreamTerm.new(TermType::MAP, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def for_each(callable)
@@ -79,11 +79,11 @@ module RethinkDB
     end
 
     def for_each
-      DatumTerm.new(TermType::FOR_EACH, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::FOR_EACH, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def order_by
-      DatumTerm.new(TermType::ORDER_BY, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::ORDER_BY, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def order_by(**kargs)
@@ -103,7 +103,7 @@ module RethinkDB
     end
 
     def sum
-      DatumTerm.new(TermType::SUM, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::SUM, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def sum(field)
@@ -115,7 +115,7 @@ module RethinkDB
     end
 
     def avg
-      DatumTerm.new(TermType::AVG, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::AVG, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def avg(field)
@@ -127,7 +127,7 @@ module RethinkDB
     end
 
     def min
-      DatumTerm.new(TermType::MIN, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::MIN, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def min(field)
@@ -143,7 +143,7 @@ module RethinkDB
     end
 
     def max
-      DatumTerm.new(TermType::MAX, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::MAX, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def max(field)
@@ -163,7 +163,7 @@ module RethinkDB
     end
 
     def group
-      GroupedStreamTerm.new(TermType::GROUP, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::GROUP, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def reduce(callable)
@@ -171,7 +171,7 @@ module RethinkDB
     end
 
     def reduce
-      StreamTerm.new(TermType::REDUCE, [self, Func.arity2 {|a, b| yield(a, b) }])
+      StreamTerm.new(TermType::REDUCE, [self, Func.arity2 { |a, b| yield(a, b) }])
     end
 
     def union(other)
@@ -182,11 +182,11 @@ module RethinkDB
       StreamTerm.new(TermType::DISTINCT, [self], kargs)
     end
 
-    def distinct(options : Hash|NamedTuple)
+    def distinct(options : Hash | NamedTuple)
       StreamTerm.new(TermType::DISTINCT, [self], options)
     end
 
-    def between(a, b, options : Hash|NamedTuple)
+    def between(a, b, options : Hash | NamedTuple)
       StreamTerm.new(TermType::BETWEEN, [self, a, b], options)
     end
 

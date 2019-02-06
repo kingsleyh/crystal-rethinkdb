@@ -16,7 +16,7 @@ module RethinkDB
       args = args.map(&.to_reql.as(JSON::Any))
       @reql = JSON.parse([
         type.to_i64,
-        args
+        args,
       ].to_json)
     end
 
@@ -25,7 +25,7 @@ module RethinkDB
       @reql = JSON.parse([
         type.to_i64,
         args,
-        options.to_reql
+        options.to_reql,
       ].to_json)
     end
 
@@ -46,36 +46,36 @@ module RethinkDB
     end
 
     def self.arity1
-      vars = {1}.map {@@vars += 1}
-      args = vars.map {|v| DatumTerm.new(TermType::VAR, [v]) }
+      vars = {1}.map { @@vars += 1 }
+      args = vars.map { |v| DatumTerm.new(TermType::VAR, [v]) }
       result = yield(args[0])
       Term.new(TermType::FUNC, [vars.to_a, result])
     end
 
     def self.arity2
-      vars = {1, 2}.map {@@vars += 1}
-      args = vars.map {|v| DatumTerm.new(TermType::VAR, [v]) }
+      vars = {1, 2}.map { @@vars += 1 }
+      args = vars.map { |v| DatumTerm.new(TermType::VAR, [v]) }
       result = yield(args[0], args[1])
       Term.new(TermType::FUNC, [vars.to_a, result])
     end
 
     def self.arity3
-      vars = {1, 2, 3}.map {@@vars += 1}
-      args = vars.map {|v| DatumTerm.new(TermType::VAR, [v]) }
+      vars = {1, 2, 3}.map { @@vars += 1 }
+      args = vars.map { |v| DatumTerm.new(TermType::VAR, [v]) }
       result = yield(args[0], args[1], args[2])
       Term.new(TermType::FUNC, [vars.to_a, result])
     end
 
     def self.arity4
-      vars = {1, 2, 3, 4}.map {@@vars += 1}
-      args = vars.map {|v| DatumTerm.new(TermType::VAR, [v]) }
+      vars = {1, 2, 3, 4}.map { @@vars += 1 }
+      args = vars.map { |v| DatumTerm.new(TermType::VAR, [v]) }
       result = yield(args[0], args[1], args[2], args[3])
       Term.new(TermType::FUNC, [vars.to_a, result])
     end
 
     def self.arity5
-      vars = {1, 2, 3, 4, 5}.map {@@vars += 1}
-      args = vars.map {|v| DatumTerm.new(TermType::VAR, [v]) }
+      vars = {1, 2, 3, 4, 5}.map { @@vars += 1 }
+      args = vars.map { |v| DatumTerm.new(TermType::VAR, [v]) }
       result = yield(args[0], args[1], args[2], args[3], args[4])
       Term.new(TermType::FUNC, [vars.to_a, result])
     end

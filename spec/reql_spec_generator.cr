@@ -17,14 +17,14 @@ end
 
 def language_fixes(str)
   lang_replaces = {
-    "None" => "nil",
-    "null" => "nil",
-    "True" => "true",
-    "False" => "false"
+    "None"  => "nil",
+    "null"  => "nil",
+    "True"  => "true",
+    "False" => "false",
   }
   regex = /([^"'\w]|^)(#{lang_replaces.keys.join("|")})([^"'\w]|$)/
   if !str.is_a?(String)
-      str = str.raw.to_s
+    str = str.raw.to_s
   end
   str = str.gsub(regex) do
     "#{$1}#{lang_replaces[$2]}#{$3}"
@@ -40,7 +40,7 @@ def language_fixes(str)
   str = str.gsub("nil:", "nil =>")
   str = str.gsub("{{", "{ {")
   str = str.gsub("orderby", "order_by")
-  str = str.gsub(/:(\w+) =>/) { "#{$1}:"}
+  str = str.gsub(/:(\w+) =>/) { "#{$1}:" }
   str
 end
 
@@ -50,7 +50,7 @@ puts "describe #{data["desc"].inspect} do"
 if tables = data["table_variable_name"]?
   puts
   tables.as_s.split(", ").map(&.split(" ")).flatten.each_with_index do |tablevar, i|
-    random_name = "test_#{Time.now.to_unix}_#{rand(10000)}_#{i+1}"
+    random_name = "test_#{Time.now.to_unix}_#{rand(10000)}_#{i + 1}"
     puts "  r.db(\"test\").table_create(#{random_name.inspect}).run(Fixtures::TestDB.conn)"
     puts "  #{tablevar} = r.db(\"test\").table(#{random_name.inspect})"
   end
@@ -69,7 +69,8 @@ data["tests"].as_a.each_with_index do |test, i|
     var = assign[0].strip
     value = assign[1].strip
     puts "  #{var} = #{value}.run(Fixtures::TestDB.conn).as_i"
-  else test["ot"]?
+  else
+    test["ot"]?
     subtests = test["rb"]? || test["cd"]?
     next unless subtests
     next if subtests == "" || subtests.raw.nil?
@@ -99,7 +100,7 @@ data["tests"].as_a.each_with_index do |test, i|
       next if output =~ /lambda/ || subtest =~ /lambda/
       subtest = language_fixes subtest
       puts unless j == 0
-      test_id = "##{i+1}.#{j+1}"
+      test_id = "##{i + 1}.#{j + 1}"
       puts "  #{ARGV.includes?(test_id) ? "pending" : "it"} \"passes on test #{test_id}: #{subtest.gsub("\\", "\\\\").gsub("\"", "\\\"")}\" do"
       if output =~ /err\("(\w+)",\s?"(.+?)"[,)]/
         puts "    expect_raises(RethinkDB::#{$1}, \"#{$2.gsub("\\\\", "\\")}\") do"

@@ -7,7 +7,7 @@ module RethinkDB
     end
 
     def update
-      DatumTerm.new(TermType::UPDATE, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::UPDATE, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def replace(doc)
@@ -15,7 +15,7 @@ module RethinkDB
     end
 
     def replace
-      DatumTerm.new(TermType::REPLACE, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::REPLACE, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def delete

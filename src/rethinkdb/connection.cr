@@ -6,7 +6,6 @@ require "./constants"
 require "./crypto"
 
 module RethinkDB
-
   class ConnectionException < Exception
   end
 
@@ -191,7 +190,7 @@ module RethinkDB
         e: {type: ErrorType, nilable: true},
         b: {type: Array(JSON::Any), nilable: true},
         p: {type: JSON::Any, nilable: true},
-        n: {type: Array(Int32), nilable: true}
+        n: {type: Array(Int32), nilable: true},
       })
     end
 

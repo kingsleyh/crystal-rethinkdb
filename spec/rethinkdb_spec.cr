@@ -43,5 +43,4 @@ describe RethinkDB do
       end
     end
   end
-
 end
