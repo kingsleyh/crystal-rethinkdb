@@ -377,5 +377,9 @@ module RethinkDB
         DatumTerm.new(TermType::ORDER_BY, [self, callable])
       end
     end
+
+    def changes(**kargs)
+      ChangesTerm.new(TermType::CHANGES, [self], kargs)
+    end
   end
 end

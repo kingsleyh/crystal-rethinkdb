@@ -31,6 +31,14 @@ module RethinkDB
     RUNTIME_ERROR    = 18
   end
 
+  enum ResponseNote
+    SEQUENCE_FEED       = 1
+    ATOM_FEED           = 2
+    ORDER_BY_LIMIT_FEED = 3
+    UNIONED_FEED        = 4
+    INCLUDES_STATES     = 5
+  end
+
   enum ErrorType
     INTERNAL         = 1000000
     RESOURCE_LIMIT   = 2000000
@@ -96,6 +104,7 @@ module RethinkDB
     BETWEEN            = 182
     REDUCE             =  37
     MAP                =  38
+    FOLD               = 187
     FILTER             =  39
     CONCAT_MAP         =  40
     ORDER_BY           =  41
@@ -132,12 +141,15 @@ module RethinkDB
     RECONFIGURE        = 176
     REBALANCE          = 179
     SYNC               = 138
+    GRANT              = 188
     INDEX_CREATE       =  75
     INDEX_DROP         =  76
     INDEX_LIST         =  77
     INDEX_STATUS       = 139
     INDEX_WAIT         = 140
     INDEX_RENAME       = 156
+    SET_WRITE_HOOK     = 189
+    GET_WRITE_HOOK     = 190
     FUNCALL            =  64
     BRANCH             =  65
     OR                 =  66
@@ -153,7 +165,6 @@ module RethinkDB
     SAMPLE             =  81
     DEFAULT            =  92
     JSON               =  98
-    TO_JSON_STRING     = 172
     ISO8601            =  99
     TO_ISO8601         = 100
     EPOCH_TIME         = 101
@@ -217,7 +228,14 @@ module RethinkDB
     FILL               = 167
     GET_NEAREST        = 168
     POLYGON_SUB        = 171
+    TO_JSON_STRING     = 172
     MINVAL             = 180
     MAXVAL             = 181
+    BIT_AND            = 191
+    BIT_OR             = 192
+    BIT_XOR            = 193
+    BIT_NOT            = 194
+    BIT_SAL            = 195
+    BIT_SAR            = 196
   end
 end

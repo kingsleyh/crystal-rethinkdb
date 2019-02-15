@@ -122,4 +122,14 @@ module RethinkDB
       conn.query_cursor(self, runopts)
     end
   end
+
+  class ChangesTerm < Term
+    def run(conn, **runopts) : Cursor
+      conn.query_changefeed(self, **runopts)
+    end
+
+    def run(conn) : Cursor
+      conn.query_changefeed(self, {} of String => String)
+    end
+  end
 end

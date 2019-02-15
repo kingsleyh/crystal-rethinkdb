@@ -21,5 +21,9 @@ module RethinkDB
     def delete
       DatumTerm.new(TermType::DELETE, [self])
     end
+
+    def changes(**kargs)
+      ChangesTerm.new(TermType::CHANGES, [self], kargs)
+    end
   end
 end
