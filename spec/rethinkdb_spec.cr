@@ -2,7 +2,8 @@ require "./spec_helper"
 
 describe RethinkDB do
   it "successfuly connects to the database" do
-    conn = Fixtures::TestDB.conn
+    connection = Fixtures::TestDB.conn
+    connection.should be_a(RethinkDB::Connection)
   end
 
   it "raises unknown user error" do
@@ -44,4 +45,69 @@ describe RethinkDB do
     end
   end
 
+  describe "listening to a feed" do
+    it "table#changes" do
+      table = Generators.random_table
+      r.table_create(table).run Fixtures::TestDB.conn
+
+      number_of_queries = 6
+      result = [] of RethinkDB::QueryResult
+
+      cursor = r.table(table).changes.run Fixtures::TestDB.conn
+      spawn do
+        cursor.each.with_index do |v, i|
+          result << v
+          break if i == number_of_queries - 1
+        end
+      end
+
+      number_of_queries.times do
+        r.table(table).insert({:id => Generators.random_pk}).run Fixtures::TestDB.conn
+      end
+
+      result.size.should eq number_of_queries
+      result.each do |r|
+        r.keys.should contain "new_val"
+        r.keys.should contain "old_val"
+      end
+
+      r.table_drop(table).run Fixtures::TestDB.conn
+    end
+
+    it "document#changes" do
+      table = Generators.random_table
+      r.table_create(table).run Fixtures::TestDB.conn
+
+      pk = Generators.random_pk
+      results = [] of RethinkDB::QueryResult
+      r.table(table).insert({id: pk, times: 0})
+      cursor = r.table(table).get(pk).changes.run Fixtures::TestDB.conn
+
+      spawn do
+        cursor.each do |v|
+          old_times = v["old_val"]["times"].as_i
+          new_times = v["new_val"]["times"].as_i
+          new_times.should eq (old_times + 1)
+          results << v
+        end
+      rescue e : RethinkDB::ReqlRunTimeError
+        e.to_s.should contain "Changefeed aborted"
+      end
+
+      6.times.with_index do |i|
+        r.table(table).get(pk).update({times: i + 1}).run Fixtures::TestDB.conn
+      end
+
+      random_pk = Generators.random_pk
+      r.table(table).insert({id: random_pk}).run Fixtures::TestDB.conn
+
+      # Check that only documents in changefeed scope trigger events
+      results.map do |v|
+        id = v["new_value"]["id"].to_s
+        (id != random_pk && pk == id).should be_true
+      end
+
+      r.table_drop(table).run Fixtures::TestDB.conn
+    end
+  end
 end

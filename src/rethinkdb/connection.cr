@@ -6,7 +6,6 @@ require "./constants"
 require "./crypto"
 
 module RethinkDB
-
   class ConnectionException < Exception
   end
 
@@ -19,11 +18,9 @@ module RethinkDB
     )
 
     def self._from_json(json)
-      begin
-        ConnectionResponse.from_json(json.not_nil!)
-      rescue error
-        raise ConnectionException.new(json)
-      end
+      ConnectionResponse.from_json(json.not_nil!)
+    rescue error
+      raise ConnectionException.new(json)
     end
   end
 
@@ -65,7 +62,7 @@ module RethinkDB
     end
 
     private def value_for(target : String)
-      authentication.split(",").select { |x| x.starts_with?("#{target}=") }.first.split("#{target}=").last
+      authentication.split(",").find(if_none: "") { |x| x.starts_with?("#{target}=") }.split("#{target}=").last
     end
   end
 
@@ -191,8 +188,13 @@ module RethinkDB
         e: {type: ErrorType, nilable: true},
         b: {type: Array(JSON::Any), nilable: true},
         p: {type: JSON::Any, nilable: true},
-        n: {type: Array(Int32), nilable: true}
+        n: {type: Array(ResponseNote), nilable: true},
       })
+
+      def cfeed?
+        notes = (self.n || [] of ResponseNote)
+        !(notes & [ResponseNote::SEQUENCE_FEED, ResponseNote::ATOM_FEED, ResponseNote::ORDER_BY_LIMIT_FEED, ResponseNote::UNIONED_FEED]).empty?
+      end
     end
 
     class ResponseStream
@@ -269,7 +271,7 @@ module RethinkDB
 
     def query_error(term, runopts)
       stream = ResponseStream.new(self, runopts)
-      response = stream.query_term(term)
+      stream.query_term(term)
 
       raise ReqlDriverError.new("An r.error should never return successfully")
     end
@@ -290,6 +292,21 @@ module RethinkDB
       response = stream.query_term(term)
 
       unless response.t == ResponseType::SUCCESS_SEQUENCE || response.t == ResponseType::SUCCESS_PARTIAL || response.t == ResponseType::SUCCESS_ATOM
+        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL or SUCCESS_ATOM but got #{response.t}")
+      end
+
+      Cursor.new(stream, response)
+    end
+
+    def query_changefeed(term, runopts)
+      stream = ResponseStream.new(self, runopts)
+      response = stream.query_term(term)
+
+      unless response.cfeed?
+        raise ReqlDriverError.new("Expected SEQUENCE_FEED, ATOM_FEED, ORDER_BY_LIMIT_FEED or UNIONED_FEED but got #{response.n} ")
+      end
+
+      unless response.t == ResponseType::SUCCESS_PARTIAL
         raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL or SUCCESS_ATOM but got #{response.t}")
       end
 
@@ -321,7 +338,7 @@ module RethinkDB
 
       value = @response.r[@index]
       @index += 1
-      return value
+      value
     end
   end
 end

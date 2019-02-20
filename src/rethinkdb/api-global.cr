@@ -4,15 +4,15 @@ module RethinkDB
   def self.db(name)
     DBTerm.new(TermType::DB, [name])
   end
-  
-  def self.db_list()
+
+  def self.db_list
     DatumTerm.new(TermType::DB_LIST)
   end
-  
+
   def self.db_drop(name)
     DatumTerm.new(TermType::DB_DROP, [name])
   end
-  
+
   def self.db_create(name)
     DatumTerm.new(TermType::DB_CREATE, [name])
   end
@@ -49,7 +49,7 @@ module RethinkDB
     StreamTerm.new(TermType::RANGE, [a, b, step])
   end
 
-  def self.do()
+  def self.do
     DatumTerm.new(TermType::FUNCALL)
   end
 
@@ -61,8 +61,8 @@ module RethinkDB
   def self.do(*args)
     args = args + {nil, nil, nil, nil, nil}
     DatumTerm.new(TermType::FUNCALL, [
-      Func.arity5 {|a, b, c, d, e| yield(a, b, c, d, e) },
-      args[0], args[1], args[2], args[3], args[4]
+      Func.arity5 { |a, b, c, d, e| yield(a, b, c, d, e) },
+      args[0], args[1], args[2], args[3], args[4],
     ])
   end
 
@@ -74,7 +74,7 @@ module RethinkDB
     ErrorTerm.new(TermType::ERROR, [reason])
   end
 
-  def self.error()
+  def self.error
     ErrorTerm.new(TermType::ERROR)
   end
 
@@ -90,7 +90,7 @@ module RethinkDB
     DatumTerm.new(TermType::OBJECT, args.to_a)
   end
 
-  def self.uuid()
+  def self.uuid
     DatumTerm.new(TermType::UUID)
   end
 

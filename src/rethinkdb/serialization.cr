@@ -8,7 +8,7 @@ class Array(T)
   def to_reql
     JSON.parse([
       RethinkDB::TermType::MAKE_ARRAY.to_i64,
-      map {|x| x.to_reql}
+      map { |x| x.to_reql },
     ].to_json)
   end
 end
@@ -17,7 +17,7 @@ struct Tuple
   def to_reql
     JSON.parse([
       RethinkDB::TermType::MAKE_ARRAY.to_i64,
-      to_a.map {|x| x.to_reql}
+      to_a.map { |x| x.to_reql },
     ].to_json)
   end
 end
@@ -27,7 +27,6 @@ struct UUID
     to_s.to_reql
   end
 end
-
 
 class Hash(K, V)
   def to_reql
@@ -69,7 +68,7 @@ end
 
 class String
   def to_reql
-      JSON.parse(self.to_json)
+    JSON.parse(self.to_json)
   end
 end
 
@@ -144,7 +143,7 @@ module RethinkDB
         #   end
         #   @raw = grouped.as Type
         # else
-          @raw = hash
+        @raw = hash
         # end
       else
         raise "Unknown pull kind: #{pull.kind}"
@@ -157,10 +156,10 @@ module RethinkDB
     def self.transformed(obj : Type, time_format, group_format, binary_format) : Type
       case obj
       when Array
-        obj.map {|x| QueryResult.transformed(x, time_format, group_format, binary_format).as Type }.as Type
+        obj.map { |x| QueryResult.transformed(x, time_format, group_format, binary_format).as Type }.as Type
       when Hash
         if obj["$reql_type$"]? == "TIME" && time_format == "native"
-          time = Time.unix((obj["epoch_time"].as Float64|Int64).to_i)
+          time = Time.unix((obj["epoch_time"].as Float64 | Int64).to_i)
           match = (obj["timezone"].as String).match(/([+-]\d\d):(\d\d)/).not_nil!
           time += match[1].to_i.hours
           time += match[2].to_i.minutes
@@ -180,7 +179,8 @@ module RethinkDB
         obj.each do |key, value|
           result[key] = QueryResult.transformed(value, time_format, group_format, binary_format)
         end
-        return result.as Type
+
+        result.as Type
       else
         obj
       end

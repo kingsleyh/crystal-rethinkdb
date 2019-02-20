@@ -11,7 +11,7 @@ module RethinkDB
     end
 
     def do(*args)
-      r.do(self, *args) {|a, b, c, d, e| yield(a, b, c, d, e) }
+      r.do(self, *args) { |a, b, c, d, e| yield(a, b, c, d, e) }
     end
 
     def count
@@ -31,7 +31,7 @@ module RethinkDB
     end
 
     def filter
-      GroupedStreamTerm.new(TermType::FILTER, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::FILTER, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def map(callable)
@@ -39,7 +39,7 @@ module RethinkDB
     end
 
     def map
-      GroupedStreamTerm.new(TermType::MAP, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::MAP, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def for_each(callable)
@@ -47,11 +47,11 @@ module RethinkDB
     end
 
     def for_each
-      GroupedStreamTerm.new(TermType::FOR_EACH, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::FOR_EACH, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def order_by
-      GroupedStreamTerm.new(TermType::ORDER_BY, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::ORDER_BY, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def order_by(**kargs)
@@ -67,7 +67,7 @@ module RethinkDB
     end
 
     def sum
-      GroupedStreamTerm.new(TermType::SUM, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::SUM, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def sum(field)
@@ -79,7 +79,7 @@ module RethinkDB
     end
 
     def avg
-      GroupedStreamTerm.new(TermType::AVG, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::AVG, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def avg(field)
@@ -91,7 +91,7 @@ module RethinkDB
     end
 
     def min
-      GroupedStreamTerm.new(TermType::MIN, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::MIN, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def min(field)
@@ -103,7 +103,7 @@ module RethinkDB
     end
 
     def max
-      GroupedStreamTerm.new(TermType::MAX, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::MAX, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def max(field)
@@ -119,7 +119,7 @@ module RethinkDB
     end
 
     def group
-      GroupedStreamTerm.new(TermType::GROUP, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::GROUP, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def reduce(callable)
@@ -127,7 +127,7 @@ module RethinkDB
     end
 
     def reduce
-      GroupedStreamTerm.new(TermType::REDUCE, [self, Func.arity2 {|a, b| yield(a, b) }])
+      GroupedStreamTerm.new(TermType::REDUCE, [self, Func.arity2 { |a, b| yield(a, b) }])
     end
 
     def union(other)
@@ -138,11 +138,11 @@ module RethinkDB
       GroupedStreamTerm.new(TermType::DISTINCT, [self])
     end
 
-    def distinct(options : Hash|NamedTuple)
+    def distinct(options : Hash | NamedTuple)
       GroupedStreamTerm.new(TermType::DISTINCT, [self], options)
     end
 
-    def between(a, b, options : Hash|NamedTuple)
+    def between(a, b, options : Hash | NamedTuple)
       GroupedStreamTerm.new(TermType::BETWEEN, [self, a, b], options)
     end
   end

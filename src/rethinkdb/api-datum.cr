@@ -11,7 +11,7 @@ module RethinkDB
     end
 
     def count
-      DatumTerm.new(TermType::COUNT, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::COUNT, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def merge(callable)
@@ -19,7 +19,7 @@ module RethinkDB
     end
 
     def merge
-      DatumTerm.new(TermType::MERGE, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::MERGE, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def set_insert(value)
@@ -31,7 +31,7 @@ module RethinkDB
     end
 
     def default
-      DatumTerm.new(TermType::DEFAULT, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::DEFAULT, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def split
@@ -102,15 +102,15 @@ module RethinkDB
       DatumTerm.new(TermType::MOD, [self] + others.to_a)
     end
 
-    def floor()
+    def floor
       DatumTerm.new(TermType::FLOOR, [self])
     end
 
-    def ceil()
+    def ceil
       DatumTerm.new(TermType::CEIL, [self])
     end
 
-    def round()
+    def round
       DatumTerm.new(TermType::ROUND, [self])
     end
 
@@ -203,7 +203,7 @@ module RethinkDB
     end
 
     def do(*args)
-      r.do(self, *args) {|a, b, c, d, e| yield(a, b, c, d, e) }
+      r.do(self, *args) { |a, b, c, d, e| yield(a, b, c, d, e) }
     end
 
     def append(value)
@@ -235,11 +235,11 @@ module RethinkDB
     end
 
     def filter
-      DatumTerm.new(TermType::FILTER, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::FILTER, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def filter(**kargs)
-      DatumTerm.new(TermType::FILTER, [self, Func.arity1 {|row| yield(row) }], kargs)
+      DatumTerm.new(TermType::FILTER, [self, Func.arity1 { |row| yield(row) }], kargs)
     end
 
     def map(callable)
@@ -247,7 +247,7 @@ module RethinkDB
     end
 
     def map
-      DatumTerm.new(TermType::MAP, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::MAP, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def for_each(callable)
@@ -255,14 +255,14 @@ module RethinkDB
     end
 
     def for_each
-      DatumTerm.new(TermType::FOR_EACH, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::FOR_EACH, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def distinct(**kargs)
       DatumTerm.new(TermType::DISTINCT, [self], kargs)
     end
 
-    def distinct(options : Hash|NamedTuple)
+    def distinct(options : Hash | NamedTuple)
       DatumTerm.new(TermType::DISTINCT, [self], options)
     end
 
@@ -271,7 +271,7 @@ module RethinkDB
     end
 
     def reduce
-      DatumTerm.new(TermType::REDUCE, [self, Func.arity2 {|a, b| yield(a, b) }])
+      DatumTerm.new(TermType::REDUCE, [self, Func.arity2 { |a, b| yield(a, b) }])
     end
 
     def limit(count)
@@ -283,7 +283,7 @@ module RethinkDB
     end
 
     def sum
-      DatumTerm.new(TermType::SUM, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::SUM, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def sum(field)
@@ -295,7 +295,7 @@ module RethinkDB
     end
 
     def avg
-      DatumTerm.new(TermType::AVG, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::AVG, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def avg(field)
@@ -307,7 +307,7 @@ module RethinkDB
     end
 
     def min
-      DatumTerm.new(TermType::MIN, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::MIN, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def min(field)
@@ -319,7 +319,7 @@ module RethinkDB
     end
 
     def max
-      DatumTerm.new(TermType::MAX, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::MAX, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def max(field)
@@ -331,7 +331,7 @@ module RethinkDB
     end
 
     def group
-      GroupedStreamTerm.new(TermType::GROUP, [self, Func.arity1 {|row| yield(row) }])
+      GroupedStreamTerm.new(TermType::GROUP, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def union(other)
@@ -355,7 +355,7 @@ module RethinkDB
     end
 
     def contains
-      DatumTerm.new(TermType::CONTAINS, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::CONTAINS, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def has_fields(other)
@@ -363,7 +363,7 @@ module RethinkDB
     end
 
     def order_by
-      DatumTerm.new(TermType::ORDER_BY, [self, Func.arity1 {|row| yield(row) }])
+      DatumTerm.new(TermType::ORDER_BY, [self, Func.arity1 { |row| yield(row) }])
     end
 
     def order_by(**kargs)
@@ -376,6 +376,10 @@ module RethinkDB
       else
         DatumTerm.new(TermType::ORDER_BY, [self, callable])
       end
+    end
+
+    def changes(**kargs)
+      ChangesTerm.new(TermType::CHANGES, [self], kargs)
     end
   end
 end

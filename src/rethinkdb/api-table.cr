@@ -27,7 +27,7 @@ module RethinkDB
     end
 
     def index_create(key, **options)
-      DatumTerm.new(TermType::INDEX_CREATE, [self, key, Func.arity1 {|row| yield(row) }], options)
+      DatumTerm.new(TermType::INDEX_CREATE, [self, key, Func.arity1 { |row| yield(row) }], options)
     end
 
     def index_wait(name)
