@@ -21,6 +21,10 @@ module RethinkDB
     DatumTerm.new(TermType::TABLE_LIST)
   end
 
+  def self.json(json_string : String)
+    DatumTerm.new(TermType::JSON, [json_string])
+  end
+
   class DBTerm < Term
     def table(name)
       TableTerm.new(TermType::TABLE, [self, name])

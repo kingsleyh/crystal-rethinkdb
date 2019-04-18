@@ -24,6 +24,14 @@ module Generators
   def self.random_pk
     yield random_pk
   end
+
+  def self.random_array(length = 5)
+    length.times.map { |_| rand(100) }.to_a
+  end
+
+  def self.random_hash(num_keys = 4)
+    num_keys.times.map { |_| ({self.random_pk, rand(100)}) }.to_h
+  end
 end
 
 module Fixtures

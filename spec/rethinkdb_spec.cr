@@ -18,6 +18,30 @@ describe RethinkDB do
     end
   end
 
+  it "r#json" do
+    Generators.random_table do |table|
+      r.table_create(table).run Fixtures::TestDB.conn
+      5.times do
+        # Generate a random document
+        document = {
+          "id"     => Generators.random_pk,
+          "serial" => Generators.random_pk,
+          "array"  => Generators.random_array,
+          "object" => Generators.random_hash,
+        }
+
+        # Insert the raw json, parsed on the DB
+        response = r.json(document.to_json).do { |value|
+          r.table(table).insert(value, return_changes: true)
+        }.run Fixtures::TestDB.conn
+
+        response["changes"][0]["new_val"].should eq document
+      end
+
+      r.table_drop(table).run Fixtures::TestDB.conn
+    end
+  end
+
   it "db#table_create(String, **options)" do
     5.times do
       Generators.random_table do |table|
