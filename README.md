@@ -2,17 +2,19 @@
 
 This is a [RethinkDB](http://rethinkdb.com/) Driver for the [Crystal Language](http://crystal-lang.org/).
 
-[![Build Status](https://travis-ci.org/kingsleyh/crystal-rethinkdb.svg?branch=master)](https://travis-ci.org/kingsleyh/crystal-rethinkdb) [![Crystal Version](https://img.shields.io/badge/crystal%20-0.27.0-brightgreen.svg)](https://crystal-lang.org/api/0.27.0/)
+[![Build Status](https://travis-ci.org/kingsleyh/crystal-rethinkdb.svg?branch=master)](https://travis-ci.org/kingsleyh/crystal-rethinkdb) [![Crystal Version](https://img.shields.io/badge/crystal%20-0.28.0-brightgreen.svg)](https://crystal-lang.org/api/0.28.0/)
 
 ### WARNING: This is only a basic driver a lot of functions are not implemented.
 
 ## History
 
-This driver is mostly a copy of this project: [cubos/rethinkdb.cr](https://github.com/cubos/rethinkdb.cr) (quickly) updated to work for Crystal 26.1. It is designed to work with the rethinkdb V1_0 release and has the user authentication mechanism implemented which was taken from this project: [rethinkdb-lite](https://github.com/lbguilherme/rethinkdb-lite)
+This driver is mostly a copy of this project: [cubos/rethinkdb.cr](https://github.com/cubos/rethinkdb.cr) (quickly) updated to work for Crystal 26.1 (and now 0.28.0). It is designed to work with the rethinkdb V1_0 release and has the user authentication mechanism implemented which was taken from this project: [rethinkdb-lite](https://github.com/lbguilherme/rethinkdb-lite)
 
 Thanks to these great projects it was not too hard to create this one. Unfortunately those other 2 projects are not being maintained and the `rethinkdb.cr` project has more of the api implemented but the code is not as well structured as the newer `rethinkdb-lite` project. However `rethinkdb-lite` has a lot of missing functionality so I made the decision to fix up the original project and add in the authentication from the newer one.
 
 I will try to do more work on this library over time. Thanks to [Guilherme Bernal](https://github.com/lbguilherme) for his hard work on which this project is based.
+
+Thanks also to [Caspian Baska](https://github.com/caspiano) for all the awesome contributions.
 
 ## Installation
 
