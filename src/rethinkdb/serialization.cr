@@ -235,6 +235,26 @@ module RethinkDB
       raw.inspect(io)
     end
 
+    # :nodoc:
+    def to_json(json : JSON::Builder)
+      raw.to_json(json)
+    end
+
+    # :nodoc:
+    def to_yaml(yaml : YAML::Nodes::Builder)
+      raw.to_yaml(yaml)
+    end
+
+    # Returns a new QueryResult instance with the `raw` value `dup`ed.
+    def dup
+      QueryResult.new(raw.dup)
+    end
+
+    # Returns a new QueryResult instance with the `raw` value `clone`ed.
+    def clone
+      QueryResult.new(raw.clone)
+    end
+
     def to_s(io)
       raw.to_s(io)
     end
@@ -247,9 +267,7 @@ module RethinkDB
       raw == other
     end
 
-    def hash
-      raw.hash
-    end
+    def_hash raw
 
     def as_nil : Nil
       @raw.as(Nil)
