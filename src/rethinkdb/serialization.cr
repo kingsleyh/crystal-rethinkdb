@@ -103,23 +103,23 @@ module RethinkDB
 
     def self.new(pull : JSON::PullParser)
       case pull.kind
-      when :null
+      when .null?
         new pull.read_null
-      when :bool
+      when .bool?
         new pull.read_bool
-      when :int
+      when .int?
         new pull.read_int
-      when :float
+      when .float?
         new pull.read_float
-      when :string
+      when .string?
         new pull.read_string
-      when :begin_array
+      when .begin_array?
         ary = [] of QueryResult
         pull.read_array do
           ary << new(pull)
         end
         new ary
-      when :begin_object
+      when .begin_object?
         hash = {} of String => QueryResult
         pull.read_object do |key|
           hash[key] = new(pull)
