@@ -30,6 +30,10 @@ module RethinkDB
       StreamTerm.new(TermType::LIMIT, [self, n])
     end
 
+    def skip(n)
+      StreamTerm.new(TermType::SKIP, [self, n])
+    end
+
     def zip
       StreamTerm.new(TermType::ZIP, [self])
     end

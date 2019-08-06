@@ -18,6 +18,12 @@ describe RethinkDB do
     end
   end
 
+  it "skip" do
+    Generators.random_table_with_entries(20, ->(table : String) {
+      r.table(table).skip(10).run(Fixtures::TestDB.conn).to_a.size.should eq(10)
+    })
+  end
+
   it "r#json" do
     Generators.random_table do |table|
       r.table_create(table).run Fixtures::TestDB.conn

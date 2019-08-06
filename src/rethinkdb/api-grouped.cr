@@ -22,6 +22,10 @@ module RethinkDB
       GroupedStreamTerm.new(TermType::LIMIT, [self, n])
     end
 
+    def skip(n)
+      GroupedStreamTerm.new(TermType::SKIP, [self, n])
+    end
+
     def [](key)
       GroupedStreamTerm.new(TermType::BRACKET, [self, key])
     end

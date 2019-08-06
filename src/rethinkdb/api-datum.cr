@@ -274,6 +274,10 @@ module RethinkDB
       DatumTerm.new(TermType::REDUCE, [self, Func.arity2 { |a, b| yield(a, b) }])
     end
 
+    def skip(count)
+      DatumTerm.new(TermType::SKIP, [self, count])
+    end
+
     def limit(count)
       DatumTerm.new(TermType::LIMIT, [self, count])
     end

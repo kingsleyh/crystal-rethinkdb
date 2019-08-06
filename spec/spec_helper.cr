@@ -32,6 +32,29 @@ module Generators
   def self.random_hash(num_keys = 4)
     num_keys.times.map { |_| ({self.random_pk, rand(100)}) }.to_h
   end
+
+  def self.random_table_with_entries(num_entries : Int32, block)
+    Generators.random_table do |table|
+      r.table_create(table).run(Fixtures::TestDB.conn)
+      num_entries.times do
+        document = {
+          "id"     => Generators.random_pk,
+          "serial" => Generators.random_pk,
+          "array"  => Generators.random_array,
+          "object" => Generators.random_hash,
+        }
+        response = r.json(document.to_json).do { |value|
+          r.table(table).insert(value, return_changes: true)
+        }.run(Fixtures::TestDB.conn)
+      end
+      begin
+        block.call(table)
+      ensure
+        r.table_drop(table).run Fixtures::TestDB.conn
+      end
+    end
+  end
+
 end
 
 module Fixtures
