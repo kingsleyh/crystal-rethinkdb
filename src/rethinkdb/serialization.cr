@@ -98,53 +98,33 @@ end
 
 module RethinkDB
   struct QueryResult
-    include Enumerable(self)
-
-    alias Type = Nil | Bool | Int64 | Float64 | String | Time | Array(Type) | Hash(String, Type)
+    alias Type = Nil | Bool | Int64 | Float64 | String | Time | Array(QueryResult) | Hash(String, QueryResult)
     property raw : Type
 
-    def initialize(pull : JSON::PullParser)
+    def self.new(pull : JSON::PullParser)
       case pull.kind
-      when :null
-        @raw = pull.read_null
-      when :bool
-        @raw = pull.read_bool
-      when :int
-        @raw = pull.read_int
-      when :float
-        @raw = pull.read_float
-      when :string
-        @raw = pull.read_string
-      when :begin_array
-        ary = [] of Type
+      when .null?
+        new pull.read_null
+      when .bool?
+        new pull.read_bool
+      when .int?
+        new pull.read_int
+      when .float?
+        new pull.read_float
+      when .string?
+        new pull.read_string
+      when .begin_array?
+        ary = [] of QueryResult
         pull.read_array do
-          ary << QueryResult.new(pull).raw
+          ary << new(pull)
         end
-        @raw = ary
-      when :begin_object
-        hash = {} of String => Type
+        new ary
+      when .begin_object?
+        hash = {} of String => QueryResult
         pull.read_object do |key|
-          hash[key] = QueryResult.new(pull).raw
+          hash[key] = new(pull)
         end
-        # case hash["$reql_type$"]?
-        # when "TIME"
-        #   time = Time.unix((hash["epoch_time"].as Float64|Int64).to_i)
-        #   match = (hash["timezone"].as String).match(/([+-]\d\d):(\d\d)/).not_nil!
-        #   time += match[1].to_i.hours
-        #   time += match[2].to_i.minutes
-        #   @raw = time
-        # when "GROUPED_DATA"
-        #   grouped = [] of Type
-        #   (hash["data"].as Array(Type)).each do |data|
-        #     data = data.as Array(Type)
-        #     group = data[0].as Type
-        #     reduction = data[1].as Type
-        #     grouped << {"group" => group, "reduction" => reduction}.as Type
-        #   end
-        #   @raw = grouped.as Type
-        # else
-        @raw = hash
-        # end
+        new hash
       else
         raise "Unknown pull kind: #{pull.kind}"
       end
@@ -153,45 +133,50 @@ module RethinkDB
     def initialize(@raw : Type)
     end
 
-    def self.transformed(obj : Type, time_format, group_format, binary_format) : Type
-      case obj
+    # Converts following ReQL formats
+    # - TIME
+    # - GROUP
+    # - BINARY
+    def self.transformed(obj : QueryResult, time_format : String, group_format : String, binary_format : String) : QueryResult
+      case (raw = obj.raw)
       when Array
-        obj.map { |x| QueryResult.transformed(x, time_format, group_format, binary_format).as Type }.as Type
+        QueryResult.new obj.as_a.map { |x| QueryResult.transformed(x, time_format, group_format, binary_format) }
       when Hash
-        if obj["$reql_type$"]? == "TIME" && time_format == "native"
-          time = Time.unix((obj["epoch_time"].as Float64 | Int64).to_i)
-          match = (obj["timezone"].as String).match(/([+-]\d\d):(\d\d)/).not_nil!
+        reql_type = obj["$reql_type$"]?
+
+        if reql_type == "TIME" && time_format == "native"
+          epoch = (obj["epoch_time"].as_f? || obj["epoch_time"].as_i).to_i
+          time = Time.unix(epoch)
+
+          match = (obj["timezone"].as_s).match(/([+-]\d\d):(\d\d)/).not_nil!
           time += match[1].to_i.hours
           time += match[2].to_i.minutes
-          return time.as Type
-        end
-        if obj["$reql_type$"]? == "GROUPED_DATA" && group_format == "native"
-          grouped = [] of Type
-          (obj["data"].as Array(Type)).each do |data|
-            data = data.as Array(Type)
-            group = data[0].as Type
-            reduction = data[1].as Type
-            grouped << {"group" => group, "reduction" => reduction}.as Type
-          end
-          return QueryResult.transformed(grouped.as Type, time_format, group_format, binary_format)
-        end
-        result = {} of String => Type
-        obj.each do |key, value|
-          result[key] = QueryResult.transformed(value, time_format, group_format, binary_format)
+
+          return QueryResult.new(time.as Type)
         end
 
-        result.as Type
+        if reql_type == "GROUPED_DATA" && group_format == "native"
+          grouped = obj["data"].as_a.map do |data|
+            group, reduction = data.as_a[0..1]
+            QueryResult.new({"group" => group, "reduction" => reduction})
+          end
+
+          return QueryResult.transformed(QueryResult.new(grouped), time_format, group_format, binary_format)
+        end
+
+        transform = raw.transform_values { |v| QueryResult.transformed(v, time_format, group_format, binary_format) }
+        QueryResult.new(transform)
       else
         obj
       end
     end
 
     def transformed(time_format, group_format, binary_format)
-      QueryResult.new(QueryResult.transformed(@raw, time_format, group_format, binary_format))
+      QueryResult.transformed(self, time_format, group_format, binary_format)
     end
 
     def size : Int
-      case object = @raw
+      case (object = @raw)
       when Array
         object.size
       when Hash
@@ -202,7 +187,7 @@ module RethinkDB
     end
 
     def keys
-      case object = @raw
+      case (object = @raw)
       when Hash
         object.keys
       else
@@ -211,60 +196,63 @@ module RethinkDB
     end
 
     def [](index : Int) : QueryResult
-      case object = @raw
+      case (object = @raw)
       when Array
-        QueryResult.new object[index]
+        object[index]
       else
         raise "expected Array for #[](index : Int), not #{object.class}"
       end
     end
 
     def []?(index : Int) : QueryResult?
-      case object = @raw
+      case (object = @raw)
       when Array
-        value = object[index]?
-        value ? QueryResult.new(value) : nil
+        object[index]?
       else
         raise "expected Array for #[]?(index : Int), not #{object.class}"
       end
     end
 
     def [](key : String) : QueryResult
-      case object = @raw
+      case (object = @raw)
       when Hash
-        QueryResult.new object[key]
+        object[key]
       else
         raise "expected Hash for #[](key : String), not #{object.class}"
       end
     end
 
     def []?(key : String) : QueryResult?
-      case object = @raw
+      case (object = @raw)
       when Hash
-        value = object[key]?
-        value ? QueryResult.new(value) : nil
+        object[key]?
       else
         raise "expected Hash for #[]?(key : String), not #{object.class}"
       end
     end
 
-    def each
-      case object = @raw
-      when Array
-        object.each do |elem|
-          yield QueryResult.new(elem), QueryResult.new(nil)
-        end
-      when Hash
-        object.each do |key, value|
-          yield QueryResult.new(key), QueryResult.new(value)
-        end
-      else
-        raise "expected Array or Hash for #each, not #{object.class}"
-      end
-    end
-
     def inspect(io)
       raw.inspect(io)
+    end
+
+    # :nodoc:
+    def to_json(json : JSON::Builder)
+      raw.to_json(json)
+    end
+
+    # :nodoc:
+    def to_yaml(yaml : YAML::Nodes::Builder)
+      raw.to_yaml(yaml)
+    end
+
+    # Returns a new QueryResult instance with the `raw` value `dup`ed.
+    def dup
+      QueryResult.new(raw.dup)
+    end
+
+    # Returns a new QueryResult instance with the `raw` value `clone`ed.
+    def clone
+      QueryResult.new(raw.clone)
     end
 
     def to_s(io)
@@ -279,9 +267,7 @@ module RethinkDB
       raw == other
     end
 
-    def hash
-      raw.hash
-    end
+    def_hash raw
 
     def as_nil : Nil
       @raw.as(Nil)
@@ -291,7 +277,7 @@ module RethinkDB
       @raw.as(Bool)
     end
 
-    def as_bool? : (Bool | Nil)
+    def as_bool? : Bool?
       as_bool if @raw.is_a?(Bool)
     end
 
@@ -299,7 +285,7 @@ module RethinkDB
       @raw.as(Int).to_i
     end
 
-    def as_i? : (Int32 | Nil)
+    def as_i? : Int32?
       as_i if @raw.is_a?(Int)
     end
 
@@ -307,7 +293,7 @@ module RethinkDB
       @raw.as(Int).to_i64
     end
 
-    def as_i64? : (Int64 | Nil)
+    def as_i64? : Int64?
       as_i64 if @raw.is_a?(Int64)
     end
 
@@ -315,7 +301,7 @@ module RethinkDB
       @raw.as(Float).to_f
     end
 
-    def as_f? : (Float64 | Nil)
+    def as_f? : Float64?
       as_f if @raw.is_a?(Float64)
     end
 
@@ -323,7 +309,7 @@ module RethinkDB
       @raw.as(Float).to_f32
     end
 
-    def as_f32? : (Float32 | Nil)
+    def as_f32? : Float32?
       as_f32 if (@raw.is_a?(Float32) || @raw.is_a?(Float64))
     end
 
@@ -331,31 +317,31 @@ module RethinkDB
       @raw.as(String)
     end
 
-    def as_s? : (String | Nil)
+    def as_s? : String?
       as_s if @raw.is_a?(String)
     end
 
-    def as_a : Array(Type)
+    def as_a : Array(QueryResult)
       @raw.as(Array)
     end
 
-    def as_a? : (Array(Type) | Nil)
-      as_a if @raw.is_a?(Array(Type))
+    def as_a? : Array(QueryResult)?
+      as_a if @raw.is_a?(Array)
     end
 
-    def as_h : Hash(String, Type)
+    def as_h : Hash(String, QueryResult)
       @raw.as(Hash)
     end
 
-    def as_h? : (Hash(String, Type) | Nil)
-      as_h if @raw.is_a?(Hash(String, Type))
+    def as_h? : Hash(String, QueryResult)?
+      as_h if @raw.is_a?(Hash)
     end
 
     def as_time : Time
       @raw.as(Time)
     end
 
-    def as_time? : (Time | Nil)
+    def as_time? : Time?
       as_time if @raw.is_a?(Time)
     end
 

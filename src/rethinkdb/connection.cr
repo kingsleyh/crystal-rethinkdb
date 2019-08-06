@@ -255,9 +255,9 @@ module RethinkDB
         end
 
         response.r = response.r.map &.transformed(
-          time_format: @runopts["time_format"]? || "native",
-          group_format: @runopts["group_format"]? || "native",
-          binary_format: @runopts["binary_format"]? || "native"
+          time_format: @runopts["time_format"]?.try(&.as_s) || "native",
+          group_format: @runopts["group_format"]?.try(&.as_s) || "native",
+          binary_format: @runopts["binary_format"]?.try(&.as_s) || "native",
         )
 
         response

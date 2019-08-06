@@ -35,7 +35,7 @@ describe RethinkDB do
           r.table(table).insert(value, return_changes: true)
         }.run Fixtures::TestDB.conn
 
-        response["changes"][0]["new_val"].should eq document
+        recursive_match(response["changes"][0]["new_val"], document)
       end
 
       r.table_drop(table).run Fixtures::TestDB.conn
