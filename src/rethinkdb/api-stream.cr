@@ -201,5 +201,21 @@ module RethinkDB
     def without(*fields)
       StreamTerm.new(TermType::WITHOUT, [self] + fields.to_a)
     end
+
+    def update
+      DatumTerm.new(TermType::UPDATE, [self, Func.arity1 { |row| yield(row) }])
+    end
+
+    def update(doc, options : Hash | NamedTuple)
+      DatumTerm.new(TermType::UPDATE, [self, doc], options)
+    end
+
+    def update(doc, **options)
+      DatumTerm.new(TermType::UPDATE, [self, doc], options)
+    end
+
+    def update(options : Hash | NamedTuple)
+      DatumTerm.new(TermType::UPDATE, [self, Func.arity1 { |row| yield(row) }], options)
+    end
   end
 end

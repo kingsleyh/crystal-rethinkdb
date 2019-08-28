@@ -145,9 +145,5 @@ module RethinkDB
     def distinct(options : Hash | NamedTuple)
       GroupedStreamTerm.new(TermType::DISTINCT, [self], options)
     end
-
-    def between(a, b, options : Hash | NamedTuple)
-      GroupedStreamTerm.new(TermType::BETWEEN, [self, a, b], options)
-    end
   end
 end
