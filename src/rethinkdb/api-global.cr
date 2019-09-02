@@ -110,6 +110,14 @@ module RethinkDB
     DatumTerm.new(TermType::DESC, [thing])
   end
 
+  def self.literal
+    DatumTerm.new(TermType::LITERAL)
+  end
+
+  def self.literal(any)
+    DatumTerm.new(TermType::LITERAL, [any])
+  end
+
   macro define_prefix_notation(*names)
     {% for name in names %}
       def self.{{name.id}}(target, *args, **kargs)

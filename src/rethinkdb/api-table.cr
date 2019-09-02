@@ -41,5 +41,17 @@ module RethinkDB
     def sample(number : Int32)
       DatumTerm.new(TermType::SAMPLE, [self, number])
     end
+
+    def [](key)
+      DatumTerm.new(TermType::BRACKET, [self, key])
+    end
+
+    def get_field(key)
+      DatumTerm.new(TermType::GET_FIELD, [self, key])
+    end
+
+    def nth(key)
+      DatumTerm.new(TermType::NTH, [self, key])
+    end
   end
 end
