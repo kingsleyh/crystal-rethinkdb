@@ -53,5 +53,9 @@ module RethinkDB
     def nth(key)
       DatumTerm.new(TermType::NTH, [self, key])
     end
+
+    def has_fields(*other)
+      DatumTerm.new(TermType::HAS_FIELDS, [self] + other.to_a)
+    end
   end
 end

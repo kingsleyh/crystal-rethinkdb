@@ -249,6 +249,8 @@ module RethinkDB
             raise ReqlUserError.new(msg)
           when ErrorType::NON_EXISTENCE
             raise ReqlNonExistenceError.new(msg)
+          when ErrorType::OP_FAILED
+            raise ReqlOpFailedError.new(msg)
           else
             raise ReqlRunTimeError.new(response.e.to_s + ": " + msg)
           end

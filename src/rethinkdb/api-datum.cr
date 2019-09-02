@@ -2,12 +2,16 @@ require "./term"
 
 module RethinkDB
   class DatumTerm
+    def to_iso8601
+      DatumTerm.new(TermType::TO_ISO8601, [self])
+    end
+
     def count
       DatumTerm.new(TermType::COUNT, [self])
     end
 
-    def to_iso8601
-      DatumTerm.new(TermType::TO_ISO8601, [self])
+    def count(value)
+      DatumTerm.new(TermType::COUNT, [self, value])
     end
 
     def count
@@ -362,8 +366,8 @@ module RethinkDB
       DatumTerm.new(TermType::CONTAINS, [self, Func.arity1 { |row| yield(row) }])
     end
 
-    def has_fields(other)
-      DatumTerm.new(TermType::HAS_FIELDS, [self, other])
+    def has_fields(*other)
+      DatumTerm.new(TermType::HAS_FIELDS, [self] + other.to_a)
     end
 
     def order_by
@@ -384,6 +388,14 @@ module RethinkDB
 
     def changes(**kargs)
       ChangesTerm.new(TermType::CHANGES, [self], kargs)
+    end
+
+    def between(a, b)
+      DatumTerm.new(TermType::BETWEEN, [self, a, b])
+    end
+    
+    def between(a, b, options : Hash | NamedTuple)
+      DatumTerm.new(TermType::BETWEEN, [self, a, b], options)
     end
   end
 end

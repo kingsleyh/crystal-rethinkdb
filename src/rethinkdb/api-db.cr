@@ -30,8 +30,16 @@ module RethinkDB
       TableTerm.new(TermType::TABLE, [self, name])
     end
 
+    def table(name, options : Hash | NamedTuple)
+      TableTerm.new(TermType::TABLE, [self, name], options)
+    end
+
     def table_create(name)
       DatumTerm.new(TermType::TABLE_CREATE, [self, name])
+    end
+
+    def table_create(name, options : Hash | NamedTuple)
+      DatumTerm.new(TermType::TABLE_CREATE, [self, name], options)
     end
 
     def table_create(name, **opts)

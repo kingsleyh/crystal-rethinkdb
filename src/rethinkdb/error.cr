@@ -25,4 +25,7 @@ module RethinkDB
 
   class ReqlError::ReqlDriverError::ReqlAuthError < Exception
   end
+
+  class ReqlOpFailedError < Exception
+  end
 end

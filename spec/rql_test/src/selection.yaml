@@ -4,26 +4,26 @@ tests:
 
     # Set up tables
     - py: tbl.insert([{'id':i, 'a':i%4} for i in xrange(100)])
-      js: |
-        tbl.insert(function(){
-            var res = []
-            for (var i = 0; i < 100; i++) {
-                res.push({id:i, 'a':i%4});
-            }
-            return res;
-        }())
+      # js: |
+      #   tbl.insert(function(){
+      #       var res = []
+      #       for (var i = 0; i < 100; i++) {
+      #           res.push({id:i, 'a':i%4});
+      #       }
+      #       return res;
+      #   }())
       rb: tbl.insert((0..99).map{ |i| { :id => i, :a => i % 4 } })
       ot: ({'deleted':0.0,'replaced':0.0,'unchanged':0.0,'errors':0.0,'skipped':0.0,'inserted':100})
 
     - py: tbl2.insert([{'id':i, 'b':i%4} for i in xrange(100)])
-      js: |
-        tbl2.insert(function(){
-            var res = []
-            for (var i = 0; i < 100; i++) {
-                res.push({id:i, 'b':i%4});
-            }
-            return res;
-        }())
+      # js: |
+      #   tbl2.insert(function(){
+      #       var res = []
+      #       for (var i = 0; i < 100; i++) {
+      #           res.push({id:i, 'b':i%4});
+      #       }
+      #       return res;
+      #   }())
       rb: tbl2.insert((0..99).map{ |i| { :id => i, :b => i % 4 } })
       ot: ({'deleted':0.0,'replaced':0.0,'unchanged':0.0,'errors':0.0,'skipped':0.0,'inserted':100})
 
@@ -56,31 +56,35 @@ tests:
       ot: ({'deleted':0.0,'replaced':0.0,'unchanged':0.0,'errors':0.0,'skipped':0.0,'inserted':1})
 
     # make sure we can query json docs by arbitrary unicode attrs
-    - cd:
-        cd: tbl3.get('Здравствуй')
-        py: tbl3.get(u'Здравствуй')
-        py3.0: tbl3.get('Здравствуй')
-        py3.1: tbl3.get('Здравствуй')
-        py3.2: tbl3.get('Здравствуй')
-      ot:
-        cd: {'id':'Здравствуй','value':'Земля!'}
-        py: {u'id':u'Здравствуй',u'value':u'Земля!'}
-        py3.0: {'id':'Здравствуй','value':'Земля!'}
-        py3.1: {'id':'Здравствуй','value':'Земля!'}
-        py3.2: {'id':'Здравствуй','value':'Земля!'}
+    - cd: tbl3.get('Здравствуй')
+      ot: {'id':'Здравствуй','value':'Земля!'}
+    # - cd:
+    #     cd: tbl3.get('Здравствуй')
+    #     py: tbl3.get(u'Здравствуй')
+    #     py3.0: tbl3.get('Здравствуй')
+    #     py3.1: tbl3.get('Здравствуй')
+    #     py3.2: tbl3.get('Здравствуй')
+    #   ot:
+    #     cd: {'id':'Здравствуй','value':'Земля!'}
+    #     py: {u'id':u'Здравствуй',u'value':u'Земля!'}
+    #     py3.0: {'id':'Здравствуй','value':'Земля!'}
+    #     py3.1: {'id':'Здравствуй','value':'Земля!'}
+    #     py3.2: {'id':'Здравствуй','value':'Земля!'}
 
-    - cd:
-        cd: tbl3.filter({'value':'Земля!'})
-        py: tbl3.filter({'value':u'Земля!'})
-        py3.0: tbl3.filter({'value':'Земля!'})
-        py3.1: tbl3.filter({'value':'Земля!'})
-        py3.2: tbl3.filter({'value':'Земля!'})
-      ot:
-        cd: [{'id':'Здравствуй','value':'Земля!'}]
-        py: [{u'id':u'Здравствуй',u'value':u'Земля!'}]
-        py3.0: [{'id':'Здравствуй','value':'Земля!'}]
-        py3.1: [{'id':'Здравствуй','value':'Земля!'}]
-        py3.2: [{'id':'Здравствуй','value':'Земля!'}]
+    - cd: tbl3.filter({'value':'Земля!'})
+      ot: [{'id':'Здравствуй','value':'Земля!'}]
+    # - cd:
+    #     cd: tbl3.filter({'value':'Земля!'})
+    #     py: tbl3.filter({'value':u'Земля!'})
+    #     py3.0: tbl3.filter({'value':'Земля!'})
+    #     py3.1: tbl3.filter({'value':'Земля!'})
+    #     py3.2: tbl3.filter({'value':'Земля!'})
+    #   ot:
+    #     cd: [{'id':'Здравствуй','value':'Земля!'}]
+    #     py: [{u'id':u'Здравствуй',u'value':u'Земля!'}]
+    #     py3.0: [{'id':'Здравствуй','value':'Земля!'}]
+    #     py3.1: [{'id':'Здравствуй','value':'Земля!'}]
+    #     py3.2: [{'id':'Здравствуй','value':'Земля!'}]
 
     # db and table name validation
     - cd: r.db('%')
@@ -125,7 +129,7 @@ tests:
     - py: r.db(tbl2DbName).table(tbl2Name, read_mode='fake').count()
       js: r.db(tbl2DbName).table(tbl2Name, {readMode:'fake'}).count()
       rb: r.db(tbl2DbName).table(tbl2Name, {:read_mode => 'fake'}).count()
-      ot: err("ReqlQueryLogicError", 'Read mode `fake` unrecognized (options are "majority", "single", and "outdated").')
+      ot: err("ReqlQueryLogicError", 'Read mode `fake` unrecognized \(options are "majority"\, "single"\, and "outdated"\).')
 
     - cd: tbl.get(20).count()
       ot: 2
@@ -150,7 +154,8 @@ tests:
       js: r.db('test').tableCreate('testpkey', {primaryKey:'foo'})
       rb: r.db('test').table_create('testpkey', { :primary_key => 'foo' })
       ot: partial({'tables_created':1})
-      def: tblpkey = r.db('test').table('testpkey')
+      
+    - def: tblpkey = r.db('test').table('testpkey')
 
     - cd: tblpkey.insert({'foo':10,'a':10})
       ot: {'deleted':0.0,'replaced':0.0,'unchanged':0.0,'errors':0.0,'skipped':0.0,'inserted':1}
@@ -319,11 +324,11 @@ tests:
     - cd: r.expr([{'a':1,'b':1,'c':3},{'a':1,'b':2,'c':3}]).filter({'a':1})
       ot: [{'a':1,'b':1,'c':3},{'a':1,'b':2,'c':3}]
 
-    # test static value syntax for filter with r.row
-    - cd: r.expr([{'a':1,'b':1,'c':3},{'a':1,'b':2,'c':3}]).filter({'a':r.row['b']})
-      js: r.expr([{'a':1,'b':1,'c':3},{'a':1,'b':2,'c':3}]).filter({'a':r.row('b')})
-      rb: # r.row not supported
-      ot: [{'a':1,'b':1,'c':3}]
+    # # test static value syntax for filter with r.row
+    # - cd: r.expr([{'a':1,'b':1,'c':3},{'a':1,'b':2,'c':3}]).filter({'a':r.row['b']})
+    #   js: r.expr([{'a':1,'b':1,'c':3},{'a':1,'b':2,'c':3}]).filter({'a':r.row('b')})
+    #   rb: # r.row not supported
+    #   ot: [{'a':1,'b':1,'c':3}]
 
     # test filtering for things by a missing attribute
     - cd: r.expr([{'a':1}]).filter({'b':1})
@@ -347,7 +352,7 @@ tests:
     # what the heck, let's see what happens
     - py: r.expr(5) + tbl
       js: r.expr(5).add(tbl)
-      rb: r 5 + tbl
+      rb: r.expr(5) + tbl
       ot: err('ReqlQueryLogicError', 'Expected type DATUM but found TABLE:', [0])
 
     - cd: tbl.has_fields('field').type_of()
