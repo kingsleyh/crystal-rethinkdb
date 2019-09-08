@@ -120,7 +120,7 @@ describe RethinkDB do
           new_times.should eq (old_times + 1)
           results << v
         end
-      rescue e : RethinkDB::ReqlRunTimeError
+      rescue e
         e.to_s.should contain "Changefeed aborted"
       end
 
