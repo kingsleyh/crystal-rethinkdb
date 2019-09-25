@@ -46,8 +46,8 @@ module RethinkDB
       RowsTerm.new(TermType::GET_ALL, [self] + args.to_a, kargs)
     end
 
-    def get_all(args, **kargs)
-      RowsTerm.new(TermType::GET_ALL, [self] + [args], kargs)
+    def get_all(args : Array, **kargs)
+      RowsTerm.new(TermType::GET_ALL, [self] + args, kargs)
     end
 
     def changes(**kargs)
