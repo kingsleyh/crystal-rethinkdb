@@ -103,7 +103,7 @@ module RethinkDB
       connect
       authorise(user, password)
 
-      @channels = {} of UInt64 => Channel::Unbuffered(String)
+      @channels = {} of UInt64 => Channel(String)
       @next_query_id = 1_u64
 
       spawn do
@@ -199,7 +199,7 @@ module RethinkDB
 
     class ResponseStream
       getter id : UInt64
-      @channel : Channel::Unbuffered(String)
+      @channel : Channel(String)
       @runopts : Hash(String, JSON::Any)
 
       def initialize(@conn : Connection, runopts)
