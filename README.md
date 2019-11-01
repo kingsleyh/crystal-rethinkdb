@@ -59,10 +59,10 @@ p r.table("tv_shows").filter {|show| show["episodes"] > 100 }.run(conn).to_a
 
 ### Connecting as a user
 
-If you made a user called `bob` with password `secret` using the admin portal e.g.:
+If you made a user called `bob` with password `secret` in the rethinkdb system table `users` e.g.:
 
 ```javascript
-r.db('my_database').table('users').insert({id: 'bob', password: 'secret'})
+r.db('rethinkdb').table('users').insert({id: 'bob', password: 'secret'})
 ```
 
 ```crystal
