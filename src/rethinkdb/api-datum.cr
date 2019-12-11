@@ -386,8 +386,12 @@ module RethinkDB
       end
     end
 
-    def changes(**kargs)
-      ChangesTerm.new(TermType::CHANGES, [self], kargs)
+    def changes
+      ChangesTerm.new(TermType::CHANGES, [self])
+    end
+
+    def changes(options : Hash | NamedTuple)
+      ChangesTerm.new(TermType::CHANGES, [self], options)
     end
 
     def between(a, b)
