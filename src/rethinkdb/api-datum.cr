@@ -405,5 +405,9 @@ module RethinkDB
     def values
       DatumTerm.new(TermType::VALUES, [self])
     end
+
+    def date
+      DatumTerm.new(TermType::DATE, [self])
+    end
   end
 end
