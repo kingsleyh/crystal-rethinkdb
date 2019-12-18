@@ -53,5 +53,9 @@ module RethinkDB
     def table_list
       DatumTerm.new(TermType::TABLE_LIST, [self])
     end
+
+    def grant(username, options : Hash | NamedTuple)
+      DatumTerm.new(TermType::GRANT, [self, username, options])
+    end
   end
 end
