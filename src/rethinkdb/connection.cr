@@ -11,45 +11,45 @@ module RethinkDB
   class ConnectionException < Exception
   end
 
-  struct ConnectionResponse
-    JSON.mapping(
-      max_protocol_version: Int32,
-      min_protocol_version: Int32,
-      server_version: String,
-      success: Bool
-    )
+  private abstract struct Message
+    include JSON::Serializable
+    include JSON::Serializable::Strict
+  end
+
+  struct ConnectionResponse < Message
+    getter max_protocol_version : Int32
+    getter min_protocol_version : Int32
+    getter server_version : String
+    getter success : Bool
 
     def self.from_json(json)
-      super(json.not_nil!)
-    rescue error
-      raise ConnectionException.new(json)
+      raise ConnectionException.new(json) if json.nil?
+      super(json)
     end
   end
 
-  struct AuthMessage1
-    def initialize(@protocol_version : Int32, @authentication_method : String, @authentication : String)
+  struct AuthMessage1 < Message
+    getter protocol_version : Int32
+    getter authentication_method : String
+    getter authentication : String
+
+    def initialize(
+      @protocol_version : Int32,
+      @authentication_method : String,
+      @authentication : String
+    )
     end
-
-    JSON.mapping(
-      protocol_version: Int32,
-      authentication_method: String,
-      authentication: String
-    )
   end
 
-  struct AuthMessageErrorResponse
-    JSON.mapping(
-      error: String,
-      error_code: Int64,
-      success: Bool
-    )
+  struct AuthMessageErrorResponse < Message
+    getter error : String
+    getter error_code : Int64
+    getter success : Bool
   end
 
-  struct AuthMessage1SuccessResponse
-    JSON.mapping(
-      authentication: String,
-      success: Bool
-    )
+  struct AuthMessage1SuccessResponse < Message
+    getter authentication : String
+    getter success : Bool
 
     def r
       value_for("r")
@@ -64,25 +64,23 @@ module RethinkDB
     end
 
     private def value_for(target : String)
-      authentication.split(",").find(if_none: "") { |x| x.starts_with?("#{target}=") }.split("#{target}=").last
+      authentication.split(",").find(if_none: "") { |f|
+        f.starts_with?("#{target}=")
+      }.split("#{target}=").last
     end
   end
 
-  struct AuthMessage3
+  struct AuthMessage3 < Message
+    getter authentication : String
+
     def initialize(nonce : String, encoded_password : String)
       @authentication = "c=biws,r=#{nonce},p=#{encoded_password}"
     end
-
-    JSON.mapping(
-      authentication: String
-    )
   end
 
-  struct AuthMessage3SuccessResponse
-    JSON.mapping(
-      authentication: String,
-      success: Bool
-    )
+  struct AuthMessage3SuccessResponse < Message
+    getter authentication : String
+    getter success : Bool
 
     def v
       authentication.split("v=").last
