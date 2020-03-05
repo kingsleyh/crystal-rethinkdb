@@ -393,7 +393,7 @@ module RethinkDB
     def between(a, b)
       DatumTerm.new(TermType::BETWEEN, [self, a, b])
     end
-    
+
     def between(a, b, options : Hash | NamedTuple)
       DatumTerm.new(TermType::BETWEEN, [self, a, b], options)
     end

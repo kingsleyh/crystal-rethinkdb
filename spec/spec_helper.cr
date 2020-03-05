@@ -43,10 +43,12 @@ module Generators
           "array"  => Generators.random_array,
           "object" => Generators.random_hash,
         }
-        response = r.json(document.to_json).do { |value|
+
+        r.json(document.to_json).do { |value|
           r.table(table).insert(value, return_changes: true)
         }.run(Fixtures::TestDB.conn)
       end
+
       begin
         block.call(table)
       ensure
@@ -54,7 +56,6 @@ module Generators
       end
     end
   end
-
 end
 
 module Fixtures

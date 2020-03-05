@@ -85,7 +85,7 @@ describe RethinkDB do
 
       cursor = r.table(table).changes.run Fixtures::TestDB.conn
       spawn do
-        cursor.each.with_index do |v, i|
+        cursor.each_with_index do |v, i|
           result << v
           break if i == number_of_queries - 1
         end
@@ -124,7 +124,7 @@ describe RethinkDB do
         e.to_s.should contain "Changefeed aborted"
       end
 
-      6.times.with_index do |i|
+      6.times do |i|
         r.table(table).get(pk).update({times: i + 1}).run Fixtures::TestDB.conn
       end
 

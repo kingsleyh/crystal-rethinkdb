@@ -50,7 +50,7 @@ puts "describe #{data["desc"].inspect} do"
 if tables = data["table_variable_name"]?
   puts
   tables.as_s.split(", ").map(&.split(" ")).flatten.each_with_index do |tablevar, i|
-    random_name = "test_#{Time.now.to_unix}_#{rand(10000)}_#{i + 1}"
+    random_name = "test_#{Time.utc.to_unix}_#{rand(10000)}_#{i + 1}"
     puts "  r.db(\"test\").table_create(#{random_name.inspect}).run(Fixtures::TestDB.conn)"
     puts "  #{tablevar} = r.db(\"test\").table(#{random_name.inspect})"
   end

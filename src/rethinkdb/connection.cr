@@ -1,9 +1,11 @@
+require "json"
+require "retriable"
 require "socket"
 require "socket/tcp_socket"
-require "json"
-require "./serialization"
+
 require "./constants"
 require "./crypto"
+require "./serialization"
 
 module RethinkDB
   class ConnectionException < Exception
@@ -17,8 +19,8 @@ module RethinkDB
       success: Bool
     )
 
-    def self._from_json(json)
-      ConnectionResponse.from_json(json.not_nil!)
+    def self.from_json(json)
+      super(json.not_nil!)
     rescue error
       raise ConnectionException.new(json)
     end
@@ -122,7 +124,7 @@ module RethinkDB
       protocol_version_bytes = Bytes.new(4)
       IO::ByteFormat::LittleEndian.encode(0x34c2bdc3_u32, protocol_version_bytes)
       write(protocol_version_bytes)
-      response = ConnectionResponse._from_json(read)
+      response = ConnectionResponse.from_json(read)
       raise ConnectionException.new("Connection could not be established: #{response}") if response.success != true
       response
     end
