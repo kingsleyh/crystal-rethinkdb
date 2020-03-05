@@ -88,6 +88,22 @@ module RethinkDB
   end
 
   class Connection
+    # Authentication
+    getter user
+    private getter password
+    # Connection
+    getter host
+    getter port
+    getter db
+    # Reconnection
+    getter max_retry_interval
+    getter max_retry_attempts
+
+    protected property channels = {} of UInt64 => Channel(String)
+
+    protected getter sock : TCPSocket
+    private getter? open : Bool = true
+
     def initialize(
       @host : String = "localhost",
       @port : Int32 = 28015,
@@ -98,24 +114,40 @@ module RethinkDB
       @max_retry_attempts : Int32? = nil
     )
       @next_id = 1_u64
-      @open = true
-
       @sock = TCPSocket.new(host, port)
+      sock.sync = false
       connect
       authorise(user, password)
 
-      @channels = {} of UInt64 => Channel(String)
-      @next_query_id = 1_u64
+      spawn { read_loop }
+    end
 
-      spawn do
-        while @open
-          id = @sock.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
-          size = @sock.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
-          slice = Slice(UInt8).new(size)
-          @sock.read_fully(slice)
-          @channels[id]?.try &.send String.new(slice)
+    private def read_loop
+      Retriable.retry(max_interval: max_retry_interval, max_attempts: max_retry_attempts) do
+        begin
+          while open?
+            id = sock.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
+            size = sock.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
+            slice = Slice(UInt8).new(size)
+            sock.read_fully(slice)
+
+            channel = channel_lock.synchronize { channels[id]? }
+            channel.try &.send String.new(slice)
+          end
+          sock.close
+        rescue e
+          sock.close
+          write_lock.synchronize do
+            reset_channels
+            reset_id
+            # Create a new socket
+            @sock = TCPSocket.new(host, port)
+            sock.sync = false
+            connect
+            authorise(user, password)
+          end
+          raise e
         end
-        @sock.close
       end
     end
 
@@ -164,33 +196,71 @@ module RethinkDB
       end
     end
 
-    private def write(data)
-      @sock.write(data)
+    protected getter write_lock = Mutex.new(Mutex::Protection::Reentrant)
+
+    protected def write(data)
+      write_lock.synchronize {
+        sock.write(data)
+        sock.flush
+      }
     end
 
-    private def read
-      @sock.gets('\0', true).not_nil!
+    protected def read
+      sock.gets('\0', true).not_nil!
     end
 
     def close
       @open = false
     end
 
-    protected def next_id
-      id = @next_id
-      @next_id += 1
-      id
+    @next_id : UInt64 = 1_u64
+
+    private getter id_lock = Mutex.new
+
+    protected def reset_id
+      id_lock.synchronize {
+        @next_id = 1_u64
+      }
     end
 
-    class Response
-      JSON.mapping({
-        t: ResponseType,
-        r: Array(QueryResult),
-        e: {type: ErrorType, nilable: true},
-        b: {type: Array(JSON::Any), nilable: true},
-        p: {type: JSON::Any, nilable: true},
-        n: {type: Array(ResponseNote), default: [] of ResponseNote},
-      })
+    protected def next_id
+      id_lock.synchronize {
+        id = @next_id
+        @next_id += 1
+        id
+      }
+    end
+
+    private getter channel_lock = Mutex.new
+
+    protected def add_channel(id : UInt64)
+      channel = Channel(String).new
+      channel_lock.synchronize {
+        channels[id] = channel
+      }
+      channel
+    end
+
+    protected def delete_channel(id : UInt64)
+      channel_lock.synchronize {
+        channels.delete(id)
+      }
+    end
+
+    protected def reset_channels
+      channel_lock.synchronize do
+        channels.each_value &.close
+        channels.clear
+      end
+    end
+
+    struct Response < Message
+      getter t : RethinkDB::ResponseType
+      getter r : Array(QueryResult)
+      getter e : ErrorType?
+      getter b : Array(JSON::Any)?
+      getter p : JSON::Any?
+      getter n : Array(RethinkDB::ResponseNote) = [] of RethinkDB::ResponseNote
 
       private FEED_NOTES = [
         ResponseNote::SEQUENCE_FEED,
@@ -200,25 +270,35 @@ module RethinkDB
       ]
 
       def changefeed?
-        !(self.n | FEED_NOTES).empty?
+        !(n | FEED_NOTES).empty?
       end
 
-      def self.from_json(json)
-        super(json)
+      protected def validate!(runopts)
+        check_errored!
+        set_formatting(runopts)
+        self
       end
 
-      protected def check_errored!
-        message = self.r[0]?.to_s
-        case self.t
+      private def set_formatting(runopts)
+        r.map! &.transformed(
+          time_format: runopts["time_format"]?.try(&.as_s) || "native",
+          group_format: runopts["group_format"]?.try(&.as_s) || "native",
+          binary_format: runopts["binary_format"]?.try(&.as_s) || "native",
+        )
+      end
+
+      private def check_errored!
+        message = r[0]?.to_s
+        case t
         when ResponseType::CLIENT_ERROR  then raise ReqlClientError.new(message)
         when ResponseType::COMPILE_ERROR then raise ReqlCompileError.new(message)
         when ResponseType::RUNTIME_ERROR
-          case self.e
+          case e
           when ErrorType::QUERY_LOGIC   then raise ReqlQueryLogicError.new(message)
           when ErrorType::USER          then raise ReqlUserError.new(message)
           when ErrorType::NON_EXISTENCE then raise ReqlNonExistenceError.new(message)
           when ErrorType::OP_FAILED     then raise ReqlOpFailedError.new(message)
-          else                               raise ReqlRunTimeError.new("#{self.e}:#{message}")
+          else                               raise ReqlRunTimeError.new("#{e}:#{message}")
           end
         end
         self
@@ -227,21 +307,27 @@ module RethinkDB
 
     struct ResponseStream
       getter id : UInt64
-      @channel : Channel(String)
-      @runopts : Hash(String, JSON::Any)
+
+      private getter channel : Channel(String)
+
+      protected getter conn
+
+      protected getter runopts : Hash(String, JSON::Any)
 
       def initialize(@conn : Connection, runopts)
-        @id = @conn.next_id
-        @channel = @conn.@channels[id] = Channel(String).new
+        @id = conn.next_id
+
+        @channel = conn.add_channel(id)
+
         @runopts = {} of String => JSON::Any
         runopts.each do |key, val|
           @runopts[key] = JSON.parse(val.to_json)
         end
-        @runopts["db"] = RethinkDB.db(@conn.@db).to_reql
+        @runopts["db"] = RethinkDB.db(conn.@db).to_reql
       end
 
       def query_term(term)
-        send_query [QueryType::START, term.to_reql, @runopts].to_json
+        send_query [QueryType::START, term.to_reql, runopts].to_json
         read_response
       end
 
@@ -251,34 +337,32 @@ module RethinkDB
       end
 
       private def send_query(query)
-        if @id == 0
+        if id == 0
           raise ReqlDriverError.new("Bug: Using already finished stream.")
         end
 
-        @conn.@sock.write_bytes(@id, IO::ByteFormat::LittleEndian)
-        @conn.@sock.write_bytes(query.bytesize, IO::ByteFormat::LittleEndian)
-        @conn.@sock.write(query.to_slice)
+        query_slice = query.to_slice
+        conn.write_lock.synchronize {
+          conn.sock.write_bytes(id, IO::ByteFormat::LittleEndian)
+          conn.sock.write_bytes(query_slice.size, IO::ByteFormat::LittleEndian)
+          conn.sock.write(query_slice)
+          conn.sock.flush
+        }
       end
 
       private def read_response
-        response = Response.from_json(@channel.receive)
+        response = Response.from_json(channel.receive)
         finish unless response.t == ResponseType::SUCCESS_PARTIAL
 
-        response.check_errored!
-        response.r = response.r.map &.transformed(
-          time_format: @runopts["time_format"]?.try(&.as_s) || "native",
-          group_format: @runopts["group_format"]?.try(&.as_s) || "native",
-          binary_format: @runopts["binary_format"]?.try(&.as_s) || "native",
-        )
-        response
+        response.validate!(runopts)
       rescue e
         finish
         raise e
       end
 
       private def finish
-        @conn.@channels.delete @id
-        @id = 0u64
+        conn.delete_channel(id)
+        @id = 0_u64
       end
     end
 

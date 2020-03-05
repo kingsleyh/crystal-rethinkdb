@@ -1,9 +1,15 @@
 name: crystal-rethinkdb
 version: 0.1.10
 
+dependencies:
+  retriable:
+    github: sija/retriable.cr
+    version: ~> 0.2.0
+
 authors:
   - Kingsley Hendrickse <kingsley.hendrickse@gmail.com>
+  - Caspian Baska <caspianbaska@gmail.com>
 
-crystal: 0.30.1
+crystal: 0.33.0
 
 license: MIT
