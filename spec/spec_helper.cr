@@ -63,13 +63,13 @@ module Fixtures
     @@host = uninitialized String
 
     begin
-      r.connect({host: "rethinkdb"}).close
+      r.connect(host: "rethinkdb").close
       @@host = "rethinkdb"
     rescue
     end
 
     begin
-      r.connect({host: "localhost"}).close
+      r.connect(host: "localhost").close
       @@host = "localhost"
     rescue
     end
@@ -86,7 +86,7 @@ module Fixtures
     end
 
     def self.conn
-      r.connect({host: host})
+      r.connect(host: host)
     end
   end
 end

@@ -8,13 +8,13 @@ describe RethinkDB do
 
   it "raises unknown user error" do
     expect_raises(RethinkDB::ReqlError::ReqlDriverError::ReqlAuthError, "error_code: 17, error: Unknown user") do
-      r.connect({host: Fixtures::TestDB.host, user: "owenfvoraewugbjbkv"})
+      r.connect(host: Fixtures::TestDB.host, user: "owenfvoraewugbjbkv")
     end
   end
 
   it "raises unknown user error" do
     expect_raises(RethinkDB::ReqlError::ReqlDriverError::ReqlAuthError, "error_code: 12, error: Wrong password") do
-      r.connect({host: Fixtures::TestDB.host, user: "admin", password: "incorrect"})
+      r.connect(host: Fixtures::TestDB.host, user: "admin", password: "incorrect")
     end
   end
 

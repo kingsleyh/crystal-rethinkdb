@@ -11,11 +11,7 @@ module RethinkDB
     end
   end
 
-  def self.connect(options)
-    Connection.new(options)
-  end
-
   def self.connect(**options)
-    Connection.new(options)
+    Connection.new(**options)
   end
 end

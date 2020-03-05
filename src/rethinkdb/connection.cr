@@ -11,7 +11,7 @@ module RethinkDB
   class ConnectionException < Exception
   end
 
-  class ConnectionResponse
+  struct ConnectionResponse
     JSON.mapping(
       max_protocol_version: Int32,
       min_protocol_version: Int32,
@@ -26,7 +26,7 @@ module RethinkDB
     end
   end
 
-  class AuthMessage1
+  struct AuthMessage1
     def initialize(@protocol_version : Int32, @authentication_method : String, @authentication : String)
     end
 
@@ -37,7 +37,7 @@ module RethinkDB
     )
   end
 
-  class AuthMessageErrorResponse
+  struct AuthMessageErrorResponse
     JSON.mapping(
       error: String,
       error_code: Int64,
@@ -45,7 +45,7 @@ module RethinkDB
     )
   end
 
-  class AuthMessage1SuccessResponse
+  struct AuthMessage1SuccessResponse
     JSON.mapping(
       authentication: String,
       success: Bool
@@ -68,7 +68,7 @@ module RethinkDB
     end
   end
 
-  class AuthMessage3
+  struct AuthMessage3
     def initialize(nonce : String, encoded_password : String)
       @authentication = "c=biws,r=#{nonce},p=#{encoded_password}"
     end
@@ -78,7 +78,7 @@ module RethinkDB
     )
   end
 
-  class AuthMessage3SuccessResponse
+  struct AuthMessage3SuccessResponse
     JSON.mapping(
       authentication: String,
       success: Bool
@@ -90,18 +90,19 @@ module RethinkDB
   end
 
   class Connection
-    def initialize(options)
-      host = options[:host]? || "localhost"
-      port = options[:port]? || 28015
-      @db = options[:db]? || "test"
-      user = options[:user]? || "admin"
-      password = options[:password]? || ""
-
-      @next_id = 1u64
+    def initialize(
+      @host : String = "localhost",
+      @port : Int32 = 28015,
+      @db : String = "test",
+      @user : String = "admin",
+      @password : String = "",
+      @max_retry_interval : Time::Span = 2.seconds,
+      @max_retry_attempts : Int32? = nil
+    )
+      @next_id = 1_u64
       @open = true
 
       @sock = TCPSocket.new(host, port)
-
       connect
       authorise(user, password)
 
@@ -190,16 +191,43 @@ module RethinkDB
         e: {type: ErrorType, nilable: true},
         b: {type: Array(JSON::Any), nilable: true},
         p: {type: JSON::Any, nilable: true},
-        n: {type: Array(ResponseNote), nilable: true},
+        n: {type: Array(ResponseNote), default: [] of ResponseNote},
       })
 
-      def cfeed?
-        notes = (self.n || [] of ResponseNote)
-        !(notes & [ResponseNote::SEQUENCE_FEED, ResponseNote::ATOM_FEED, ResponseNote::ORDER_BY_LIMIT_FEED, ResponseNote::UNIONED_FEED]).empty?
+      private FEED_NOTES = [
+        ResponseNote::SEQUENCE_FEED,
+        ResponseNote::ATOM_FEED,
+        ResponseNote::ORDER_BY_LIMIT_FEED,
+        ResponseNote::UNIONED_FEED,
+      ]
+
+      def changefeed?
+        !(self.n | FEED_NOTES).empty?
+      end
+
+      def self.from_json(json)
+        super(json)
+      end
+
+      protected def check_errored!
+        message = self.r[0]?.to_s
+        case self.t
+        when ResponseType::CLIENT_ERROR  then raise ReqlClientError.new(message)
+        when ResponseType::COMPILE_ERROR then raise ReqlCompileError.new(message)
+        when ResponseType::RUNTIME_ERROR
+          case self.e
+          when ErrorType::QUERY_LOGIC   then raise ReqlQueryLogicError.new(message)
+          when ErrorType::USER          then raise ReqlUserError.new(message)
+          when ErrorType::NON_EXISTENCE then raise ReqlNonExistenceError.new(message)
+          when ErrorType::OP_FAILED     then raise ReqlOpFailedError.new(message)
+          else                               raise ReqlRunTimeError.new("#{self.e}:#{message}")
+          end
+        end
+        self
       end
     end
 
-    class ResponseStream
+    struct ResponseStream
       getter id : UInt64
       @channel : Channel(String)
       @runopts : Hash(String, JSON::Any)
@@ -238,33 +266,16 @@ module RethinkDB
         response = Response.from_json(@channel.receive)
         finish unless response.t == ResponseType::SUCCESS_PARTIAL
 
-        if response.t == ResponseType::CLIENT_ERROR
-          raise ReqlClientError.new(response.r[0].to_s)
-        elsif response.t == ResponseType::COMPILE_ERROR
-          raise ReqlCompileError.new(response.r[0].to_s)
-        elsif response.t == ResponseType::RUNTIME_ERROR
-          msg = response.r[0].to_s
-          case response.e
-          when ErrorType::QUERY_LOGIC
-            raise ReqlQueryLogicError.new(msg)
-          when ErrorType::USER
-            raise ReqlUserError.new(msg)
-          when ErrorType::NON_EXISTENCE
-            raise ReqlNonExistenceError.new(msg)
-          when ErrorType::OP_FAILED
-            raise ReqlOpFailedError.new(msg)
-          else
-            raise ReqlRunTimeError.new(response.e.to_s + ": " + msg)
-          end
-        end
-
+        response.check_errored!
         response.r = response.r.map &.transformed(
           time_format: @runopts["time_format"]?.try(&.as_s) || "native",
           group_format: @runopts["group_format"]?.try(&.as_s) || "native",
           binary_format: @runopts["binary_format"]?.try(&.as_s) || "native",
         )
-
         response
+      rescue e
+        finish
+        raise e
       end
 
       private def finish
@@ -306,7 +317,7 @@ module RethinkDB
       stream = ResponseStream.new(self, runopts)
       response = stream.query_term(term)
 
-      unless response.cfeed?
+      unless response.changefeed?
         raise ReqlDriverError.new("Expected SEQUENCE_FEED, ATOM_FEED, ORDER_BY_LIMIT_FEED or UNIONED_FEED but got #{response.n} ")
       end
 
