@@ -50,8 +50,12 @@ module RethinkDB
       RowsTerm.new(TermType::GET_ALL, [self] + args, kargs)
     end
 
-    def changes(**kargs)
-      ChangesTerm.new(TermType::CHANGES, [self], kargs)
+    def changes
+      ChangesTerm.new(TermType::CHANGES, [self])
+    end
+
+    def changes(options : Hash | NamedTuple)
+      ChangesTerm.new(TermType::CHANGES, [self], options)
     end
   end
 end

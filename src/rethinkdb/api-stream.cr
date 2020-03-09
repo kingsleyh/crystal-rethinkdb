@@ -217,5 +217,17 @@ module RethinkDB
     def update(options : Hash | NamedTuple)
       DatumTerm.new(TermType::UPDATE, [self, Func.arity1 { |row| yield(row) }], options)
     end
+
+    def merge
+      DatumTerm.new(TermType::MERGE, [self, Func.arity1 { |row| yield(row) }])
+    end
+
+    def changes
+      ChangesTerm.new(TermType::CHANGES, [self])
+    end
+
+    def changes(options : Hash | NamedTuple)
+      ChangesTerm.new(TermType::CHANGES, [self], options)
+    end
   end
 end

@@ -386,8 +386,12 @@ module RethinkDB
       end
     end
 
-    def changes(**kargs)
-      ChangesTerm.new(TermType::CHANGES, [self], kargs)
+    def changes
+      ChangesTerm.new(TermType::CHANGES, [self])
+    end
+
+    def changes(options : Hash | NamedTuple)
+      ChangesTerm.new(TermType::CHANGES, [self], options)
     end
 
     def between(a, b)
@@ -396,6 +400,18 @@ module RethinkDB
 
     def between(a, b, options : Hash | NamedTuple)
       DatumTerm.new(TermType::BETWEEN, [self, a, b], options)
+    end
+
+    def keys
+      DatumTerm.new(TermType::KEYS, [self])
+    end
+
+    def values
+      DatumTerm.new(TermType::VALUES, [self])
+    end
+
+    def date
+      DatumTerm.new(TermType::DATE, [self])
     end
   end
 end
