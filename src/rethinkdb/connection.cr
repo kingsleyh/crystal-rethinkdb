@@ -3,90 +3,15 @@ require "retriable"
 require "socket"
 require "socket/tcp_socket"
 
+require "./auth"
 require "./constants"
 require "./crypto"
+require "./cursor"
+require "./error"
+require "./message"
 require "./serialization"
 
 module RethinkDB
-  class ConnectionException < Exception
-  end
-
-  private abstract struct Message
-    include JSON::Serializable
-    include JSON::Serializable::Strict
-  end
-
-  struct ConnectionResponse < Message
-    getter max_protocol_version : Int32
-    getter min_protocol_version : Int32
-    getter server_version : String
-    getter success : Bool
-
-    def self.from_json(json)
-      raise ConnectionException.new(json) if json.nil?
-      super(json)
-    end
-  end
-
-  struct AuthMessage1 < Message
-    getter protocol_version : Int32
-    getter authentication_method : String
-    getter authentication : String
-
-    def initialize(
-      @protocol_version : Int32,
-      @authentication_method : String,
-      @authentication : String
-    )
-    end
-  end
-
-  struct AuthMessageErrorResponse < Message
-    getter error : String
-    getter error_code : Int64
-    getter success : Bool
-  end
-
-  struct AuthMessage1SuccessResponse < Message
-    getter authentication : String
-    getter success : Bool
-
-    def r
-      value_for("r")
-    end
-
-    def s
-      Base64.decode(value_for("s"))
-    end
-
-    def i
-      value_for("i").to_i
-    end
-
-    private def value_for(target : String)
-      authentication.split(",").find(if_none: "") { |f|
-        f.starts_with?("#{target}=")
-      }.split("#{target}=").last
-    end
-  end
-
-  struct AuthMessage3 < Message
-    getter authentication : String
-
-    def initialize(nonce : String, encoded_password : String)
-      @authentication = "c=biws,r=#{nonce},p=#{encoded_password}"
-    end
-  end
-
-  struct AuthMessage3SuccessResponse < Message
-    getter authentication : String
-    getter success : Bool
-
-    def v
-      authentication.split("v=").last
-    end
-  end
-
   class Connection
     # Authentication
     getter user
@@ -120,6 +45,10 @@ module RethinkDB
       authorise(user, password)
 
       spawn { read_loop }
+    end
+
+    def close
+      @open = false
     end
 
     private def read_loop
@@ -163,11 +92,11 @@ module RethinkDB
     private def authorise(user : String, password : String)
       client_nonce = Random::Secure.base64(14)
       message1 = "n,,n=#{user},r=#{client_nonce}"
-      write((AuthMessage1.new(0, "SCRAM-SHA-256", message1).to_json + "\0").to_slice)
+      write((Auth::Message1.new(0, "SCRAM-SHA-256", message1).to_json + "\0").to_slice)
       json = JSON.parse(data1 = read)
 
       if (json["success"].as_bool)
-        response = AuthMessage1SuccessResponse.from_json(data1)
+        response = Auth::Message1SuccessResponse.from_json(data1)
         combined_nonce = response.r
         salt = response.s
         iteration_count = response.i
@@ -182,16 +111,16 @@ module RethinkDB
           client_proof[i] = client_key[i] ^ client_signature[i]
         end
 
-        write((AuthMessage3.new(combined_nonce, Base64.strict_encode(client_proof)).to_json + "\0").to_slice)
+        write((Auth::Message3.new(combined_nonce, Base64.strict_encode(client_proof)).to_json + "\0").to_slice)
         json = JSON.parse(data2 = read)
         if (json["success"].as_bool)
-          AuthMessage3SuccessResponse.from_json(data2)
+          Auth::Message3SuccessResponse.from_json(data2)
         else
-          error = AuthMessageErrorResponse.from_json(data2)
+          error = Auth::MessageErrorResponse.from_json(data2)
           raise ReqlError::ReqlDriverError::ReqlAuthError.new("error_code: #{error.error_code}, error: #{error.error}")
         end
       else
-        error = AuthMessageErrorResponse.from_json(data1)
+        error = Auth::MessageErrorResponse.from_json(data1)
         raise ReqlError::ReqlDriverError::ReqlAuthError.new("error_code: #{error.error_code}, error: #{error.error}")
       end
     end
@@ -207,10 +136,6 @@ module RethinkDB
 
     protected def read
       sock.gets('\0', true).not_nil!
-    end
-
-    def close
-      @open = false
     end
 
     @next_id : UInt64 = 1_u64
@@ -251,6 +176,62 @@ module RethinkDB
       channel_lock.synchronize do
         channels.each_value &.close
         channels.clear
+      end
+    end
+
+    def query_error(term, runopts)
+      stream = ResponseStream.new(self, runopts)
+      stream.query_term(term)
+
+      raise ReqlDriverError.new("An r.error should never return successfully")
+    end
+
+    def query_datum(term, runopts)
+      stream = ResponseStream.new(self, runopts)
+      response = stream.query_term(term)
+
+      unless response.t == ResponseType::SUCCESS_ATOM
+        raise ReqlDriverError.new("Expected SUCCESS_ATOM but got #{response.t}")
+      end
+
+      response.r[0]
+    end
+
+    def query_cursor(term, runopts)
+      stream = ResponseStream.new(self, runopts)
+      response = stream.query_term(term)
+
+      unless response.t == ResponseType::SUCCESS_SEQUENCE || response.t == ResponseType::SUCCESS_PARTIAL || response.t == ResponseType::SUCCESS_ATOM
+        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL or SUCCESS_ATOM but got #{response.t}")
+      end
+
+      Cursor.new(stream, response)
+    end
+
+    def query_changefeed(term, runopts)
+      stream = ResponseStream.new(self, runopts)
+      response = stream.query_term(term)
+
+      unless response.changefeed?
+        raise ReqlDriverError.new("Expected SEQUENCE_FEED, ATOM_FEED, ORDER_BY_LIMIT_FEED or UNIONED_FEED but got #{response.n} ")
+      end
+
+      unless response.t == ResponseType::SUCCESS_PARTIAL
+        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL or SUCCESS_ATOM but got #{response.t}")
+      end
+
+      Cursor.new(stream, response)
+    end
+
+    struct ConnectionResponse < Message
+      getter max_protocol_version : Int32
+      getter min_protocol_version : Int32
+      getter server_version : String
+      getter success : Bool
+
+      def self.from_json(json)
+        raise ConnectionException.new(json) if json.nil?
+        super(json)
       end
     end
 
@@ -364,96 +345,6 @@ module RethinkDB
         conn.delete_channel(id)
         @id = 0_u64
       end
-    end
-
-    def query_error(term, runopts)
-      stream = ResponseStream.new(self, runopts)
-      stream.query_term(term)
-
-      raise ReqlDriverError.new("An r.error should never return successfully")
-    end
-
-    def query_datum(term, runopts)
-      stream = ResponseStream.new(self, runopts)
-      response = stream.query_term(term)
-
-      unless response.t == ResponseType::SUCCESS_ATOM
-        raise ReqlDriverError.new("Expected SUCCESS_ATOM but got #{response.t}")
-      end
-
-      response.r[0]
-    end
-
-    def query_cursor(term, runopts)
-      stream = ResponseStream.new(self, runopts)
-      response = stream.query_term(term)
-
-      unless response.t == ResponseType::SUCCESS_SEQUENCE || response.t == ResponseType::SUCCESS_PARTIAL || response.t == ResponseType::SUCCESS_ATOM
-        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL or SUCCESS_ATOM but got #{response.t}")
-      end
-
-      Cursor.new(stream, response)
-    end
-
-    def query_changefeed(term, runopts)
-      stream = ResponseStream.new(self, runopts)
-      response = stream.query_term(term)
-
-      unless response.changefeed?
-        raise ReqlDriverError.new("Expected SEQUENCE_FEED, ATOM_FEED, ORDER_BY_LIMIT_FEED or UNIONED_FEED but got #{response.n} ")
-      end
-
-      unless response.t == ResponseType::SUCCESS_PARTIAL
-        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL or SUCCESS_ATOM but got #{response.t}")
-      end
-
-      Cursor.new(stream, response)
-    end
-  end
-
-  class Cursor
-    include Iterator(QueryResult)
-
-    private property index : Int32 = 0
-    private property stopped : Bool = false
-    private property response
-    private getter stream
-
-    def initialize(@stream : Connection::ResponseStream, @response : Connection::Response)
-    end
-
-    def stop
-      self.stopped = true
-      stream.conn.delete_channel(stream.id).try &.close
-      super
-    end
-
-    def fetch_next
-      self.response = stream.query_continue
-      self.index = 0
-
-      unless response.t.in? [ResponseType::SUCCESS_SEQUENCE, ResponseType::SUCCESS_PARTIAL]
-        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL but got #{response.t}")
-      end
-
-      true
-    rescue e
-      # Do not raise after iteration stonpped
-      raise e unless stopped
-
-      false
-    end
-
-    def next
-      return stop if stopped
-      while index == response.r.size
-        return stop if response.t == ResponseType::SUCCESS_SEQUENCE
-        return stop unless fetch_next
-      end
-
-      value = response.r[index]
-      @index += 1
-      value
     end
   end
 end

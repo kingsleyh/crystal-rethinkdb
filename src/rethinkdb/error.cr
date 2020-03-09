@@ -28,4 +28,7 @@ module RethinkDB
 
   class ReqlOpFailedError < Exception
   end
+
+  class ConnectionException < Exception
+  end
 end
