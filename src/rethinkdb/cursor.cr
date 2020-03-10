@@ -1,4 +1,5 @@
 require "./constants"
+require "./serialization"
 
 module RethinkDB
   class Cursor

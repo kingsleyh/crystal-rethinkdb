@@ -1,5 +1,7 @@
-name: crystal-rethinkdb
-version: 0.1.10
+name: rethinkdb
+version: 0.2.0
+crystal: 0.33.0
+license: MIT
 
 dependencies:
   retriable:
@@ -9,7 +11,3 @@ dependencies:
 authors:
   - Kingsley Hendrickse <kingsley.hendrickse@gmail.com>
   - Caspian Baska <caspianbaska@gmail.com>
-
-crystal: 0.33.0
-
-license: MIT
