@@ -26,8 +26,20 @@ module RethinkDB
       DatumTerm.new(TermType::MERGE, [self, Func.arity1 { |row| yield(row) }])
     end
 
+    def set_difference(value)
+      DatumTerm.new(TermType::SET_DIFFERENCE, [self, value])
+    end
+
+    def set_intersection(value)
+      DatumTerm.new(TermType::SET_INTERSECTION, [self, value])
+    end
+
     def set_insert(value)
       DatumTerm.new(TermType::SET_INSERT, [self, value])
+    end
+
+    def set_union(value)
+      DatumTerm.new(TermType::SET_UNION, [self, value])
     end
 
     def default(value)
