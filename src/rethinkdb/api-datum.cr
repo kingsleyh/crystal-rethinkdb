@@ -238,6 +238,10 @@ module RethinkDB
       DatumTerm.new(TermType::SPLICE_AT, [self, index, array])
     end
 
+    def delete
+      DatumTerm.new(TermType::DELETE, [self])
+    end
+
     def delete_at(index)
       DatumTerm.new(TermType::DELETE_AT, [self, index])
     end
