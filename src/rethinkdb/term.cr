@@ -125,11 +125,15 @@ module RethinkDB
 
   class ChangesTerm < Term
     def run(conn, **runopts) : Cursor
-      conn.query_changefeed(self, **runopts)
+      conn.query_changefeed(self, runopts)
     end
 
     def run(conn) : Cursor
       conn.query_changefeed(self, {} of String => String)
+    end
+
+    def run(conn, runopts : Hash | NamedTuple)
+      conn.query_cursor(self, runopts)
     end
   end
 
