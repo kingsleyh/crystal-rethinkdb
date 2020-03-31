@@ -38,6 +38,10 @@ module RethinkDB
       DatumTerm.new(TermType::INDEX_LIST, [self])
     end
 
+    def index_drop(name)
+      DatumTerm.new(TermType::INDEX_DROP, [self, name])
+    end
+
     def sample(number : Int32)
       DatumTerm.new(TermType::SAMPLE, [self, number])
     end

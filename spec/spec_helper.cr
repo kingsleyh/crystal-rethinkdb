@@ -43,10 +43,12 @@ module Generators
           "array"  => Generators.random_array,
           "object" => Generators.random_hash,
         }
-        response = r.json(document.to_json).do { |value|
+
+        r.json(document.to_json).do { |value|
           r.table(table).insert(value, return_changes: true)
         }.run(Fixtures::TestDB.conn)
       end
+
       begin
         block.call(table)
       ensure
@@ -54,7 +56,6 @@ module Generators
       end
     end
   end
-
 end
 
 module Fixtures
@@ -62,13 +63,13 @@ module Fixtures
     @@host = uninitialized String
 
     begin
-      r.connect({host: "rethinkdb"}).close
+      r.connect(host: "rethinkdb").close
       @@host = "rethinkdb"
     rescue
     end
 
     begin
-      r.connect({host: "localhost"}).close
+      r.connect(host: "localhost").close
       @@host = "localhost"
     rescue
     end
@@ -85,7 +86,7 @@ module Fixtures
     end
 
     def self.conn
-      r.connect({host: host})
+      r.connect(host: host)
     end
   end
 end

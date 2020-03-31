@@ -50,8 +50,32 @@ module RethinkDB
       RowsTerm.new(TermType::GET_ALL, [self] + args, kargs)
     end
 
-    def changes(**kargs)
-      ChangesTerm.new(TermType::CHANGES, [self], kargs)
+    def changes
+      ChangesTerm.new(TermType::CHANGES, [self])
+    end
+
+    def changes(options : Hash | NamedTuple)
+      ChangesTerm.new(TermType::CHANGES, [self], options)
+    end
+
+    def count
+      DatumTerm.new(TermType::COUNT, [self])
+    end
+
+    def count(value)
+      DatumTerm.new(TermType::COUNT, [self, value])
+    end
+
+    def count
+      DatumTerm.new(TermType::COUNT, [self, Func.arity1 { |row| yield(row) }])
+    end
+
+    def slice(start)
+      RowsTerm.new(TermType::SLICE, [self, start])
+    end
+
+    def slice(start, size)
+      RowsTerm.new(TermType::SLICE, [self, start, size])
     end
   end
 end

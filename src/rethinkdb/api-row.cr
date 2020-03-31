@@ -30,8 +30,12 @@ module RethinkDB
       DatumTerm.new(TermType::DELETE, [self])
     end
 
-    def changes(**kargs)
-      ChangesTerm.new(TermType::CHANGES, [self], kargs)
+    def changes
+      ChangesTerm.new(TermType::CHANGES, [self])
+    end
+
+    def changes(options : Hash | NamedTuple)
+      ChangesTerm.new(TermType::CHANGES, [self], options)
     end
   end
 end
