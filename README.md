@@ -2,7 +2,7 @@
 
 This is a [RethinkDB](http://rethinkdb.com/) Driver for the [Crystal Language](http://crystal-lang.org/).
 
-[![Build Status](https://travis-ci.org/aca-labs/crystal-rethinkdb.svg?branch=master)](https://travis-ci.org/aca-labs/crystal-rethinkdb) [![Crystal Version](https://img.shields.io/badge/crystal%20-0.33.0-brightgreen.svg)](https://crystal-lang.org/api/0.33.0/)
+[![Build Status](https://travis-ci.org/kingsleyh/crystal-rethinkdb.svg?branch=master)](https://travis-ci.org/kingsleyh/crystal-rethinkdb) [![Crystal Version](https://img.shields.io/badge/crystal%20-0.34.0-brightgreen.svg)](https://crystal-lang.org/api/0.34.0/)
 
 ## Installation
 
@@ -11,12 +11,12 @@ Add this to your application's `shard.yml`:
 ```yaml
 dependencies:
   rethinkdb:
-    github: aca-labs/crystal-rethinkdb
+    github: kingsleyh/crystal-rethinkdb
 ```
 
 ## Usage
 
-This library is meant to be compatible with RethinkDB's Ruby API. Thus, all [official documentation](http://rethinkdb.com/api/ruby/) should be valid here. If you find something that behaves differently, please [open an issue](https://github.com/aca-labs/crystal-rethinkdb/issues/new).
+This library is meant to be compatible with RethinkDB's Ruby API. Thus, all [official documentation](http://rethinkdb.com/api/ruby/) should be valid here. If you find something that behaves differently, please [open an issue](https://github.com/kingsleyh/crystal-rethinkdb/issues/new).
 
 ```crystal
 require "rethinkdb"
@@ -164,31 +164,31 @@ r.table("users").get(userId).update{|u| {groups: u.get_field("groups").set_inser
 
 ```crystal
 def recreate_database
-      puts "dropping database: #{@env.database.name}"
+  puts "dropping database: #{@env.database.name}"
 
-      begin
-        r.db_drop(@env.database.name).run( @connection)
-      rescue ex
-        puts ex.message
-      end
+  begin
+    r.db_drop(@env.database.name).run( @connection)
+  rescue ex
+    puts ex.message
+  end
 
-      puts "creating database: #{@env.database.name}"
-      r.db_create(@env.database.name).run(@connection)
+  puts "creating database: #{@env.database.name}"
+  r.db_create(@env.database.name).run(@connection)
 
-      # add tables
-      puts "adding tables: users, groups, channels, messages"
-      r.db(@env.database.name).table_create("users").run(@connection)
-      r.db(@env.database.name).table_create("groups").run(@connection)
-      r.db(@env.database.name).table_create("channels").run(@connection)
-      r.db(@env.database.name).table_create("messages").run(@connection)
+  # add tables
+  puts "adding tables: users, groups, channels, messages"
+  r.db(@env.database.name).table_create("users").run(@connection)
+  r.db(@env.database.name).table_create("groups").run(@connection)
+  r.db(@env.database.name).table_create("channels").run(@connection)
+  r.db(@env.database.name).table_create("messages").run(@connection)
 
-      puts "done"
-    end
+  puts "done"
+end
 ```
 
 ## Contributing
 
-1. Fork it (<https://github.com/aca-labs/crystal-rethinkdb/fork>)
+1. Fork it (<https://github.com/kingsleyh/crystal-rethinkdb/fork>)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
