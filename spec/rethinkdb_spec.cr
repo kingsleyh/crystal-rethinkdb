@@ -8,13 +8,13 @@ describe RethinkDB do
 
   it "raises unknown user error" do
     expect_raises(RethinkDB::ReqlError::ReqlDriverError::ReqlAuthError, "error_code: 17, error: Unknown user") do
-      r.connect({host: Fixtures::TestDB.host, user: "owenfvoraewugbjbkv"})
+      r.connect(host: Fixtures::TestDB.host, user: "owenfvoraewugbjbkv")
     end
   end
 
   it "raises unknown user error" do
     expect_raises(RethinkDB::ReqlError::ReqlDriverError::ReqlAuthError, "error_code: 12, error: Wrong password") do
-      r.connect({host: Fixtures::TestDB.host, user: "admin", password: "incorrect"})
+      r.connect(host: Fixtures::TestDB.host, user: "admin", password: "incorrect")
     end
   end
 
@@ -85,7 +85,7 @@ describe RethinkDB do
 
       cursor = r.table(table).changes.run Fixtures::TestDB.conn
       spawn do
-        cursor.each.with_index do |v, i|
+        cursor.each_with_index do |v, i|
           result << v
           break if i == number_of_queries - 1
         end
@@ -124,7 +124,7 @@ describe RethinkDB do
         e.to_s.should contain "Changefeed aborted"
       end
 
-      6.times.with_index do |i|
+      6.times do |i|
         r.table(table).get(pk).update({times: i + 1}).run Fixtures::TestDB.conn
       end
 

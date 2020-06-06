@@ -1,120 +1,82 @@
+require "json"
+require "retriable"
 require "socket"
 require "socket/tcp_socket"
-require "json"
-require "./serialization"
+
+require "./auth"
 require "./constants"
 require "./crypto"
+require "./cursor"
+require "./error"
+require "./message"
+require "./serialization"
 
 module RethinkDB
-  class ConnectionException < Exception
-  end
-
-  class ConnectionResponse
-    JSON.mapping(
-      max_protocol_version: Int32,
-      min_protocol_version: Int32,
-      server_version: String,
-      success: Bool
-    )
-
-    def self._from_json(json)
-      ConnectionResponse.from_json(json.not_nil!)
-    rescue error
-      raise ConnectionException.new(json)
-    end
-  end
-
-  class AuthMessage1
-    def initialize(@protocol_version : Int32, @authentication_method : String, @authentication : String)
-    end
-
-    JSON.mapping(
-      protocol_version: Int32,
-      authentication_method: String,
-      authentication: String
-    )
-  end
-
-  class AuthMessageErrorResponse
-    JSON.mapping(
-      error: String,
-      error_code: Int64,
-      success: Bool
-    )
-  end
-
-  class AuthMessage1SuccessResponse
-    JSON.mapping(
-      authentication: String,
-      success: Bool
-    )
-
-    def r
-      value_for("r")
-    end
-
-    def s
-      Base64.decode(value_for("s"))
-    end
-
-    def i
-      value_for("i").to_i
-    end
-
-    private def value_for(target : String)
-      authentication.split(",").find(if_none: "") { |x| x.starts_with?("#{target}=") }.split("#{target}=").last
-    end
-  end
-
-  class AuthMessage3
-    def initialize(nonce : String, encoded_password : String)
-      @authentication = "c=biws,r=#{nonce},p=#{encoded_password}"
-    end
-
-    JSON.mapping(
-      authentication: String
-    )
-  end
-
-  class AuthMessage3SuccessResponse
-    JSON.mapping(
-      authentication: String,
-      success: Bool
-    )
-
-    def v
-      authentication.split("v=").last
-    end
-  end
-
   class Connection
-    def initialize(options)
-      host = options[:host]? || "localhost"
-      port = options[:port]? || 28015
-      @db = options[:db]? || "test"
-      user = options[:user]? || "admin"
-      password = options[:password]? || ""
+    # Authentication
+    getter user
+    private getter password
+    # Connection
+    getter host
+    getter port
+    getter db
+    # Reconnection
+    getter max_retry_interval
+    getter max_retry_attempts
 
-      @next_id = 1u64
-      @open = true
+    protected property channels = {} of UInt64 => Channel(String)
 
+    protected getter sock : TCPSocket
+    private getter? open : Bool = true
+
+    def initialize(
+      @host : String = "localhost",
+      @port : Int32 = 28015,
+      @db : String = "test",
+      @user : String = "admin",
+      @password : String = "",
+      @max_retry_interval : Time::Span = 2.seconds,
+      @max_retry_attempts : Int32? = nil
+    )
+      @next_id = 1_u64
       @sock = TCPSocket.new(host, port)
-
+      sock.sync = false
       connect
       authorise(user, password)
 
-      @channels = {} of UInt64 => Channel(String)
-      @next_query_id = 1_u64
+      spawn { read_loop }
+    end
 
-      spawn do
-        while @open
-          id = @sock.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
-          size = @sock.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
-          slice = Slice(UInt8).new(size)
-          @sock.read_fully(slice)
-          @channels[id]?.try &.send String.new(slice)
+    def close
+      @open = false
+    end
+
+    private def read_loop
+      Retriable.retry(max_interval: max_retry_interval, max_attempts: max_retry_attempts) do
+        begin
+          while open?
+            id = sock.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
+            size = sock.read_bytes(UInt32, IO::ByteFormat::LittleEndian)
+            slice = Slice(UInt8).new(size)
+            sock.read_fully(slice)
+
+            channel = channel_lock.synchronize { channels[id]? }
+            channel.try &.send String.new(slice)
+          end
+          sock.close
+        rescue e
+          sock.close
+          write_lock.synchronize do
+            reset_channels
+            reset_id
+            # Create a new socket
+            @sock = TCPSocket.new(host, port)
+            sock.sync = false
+            connect
+            authorise(user, password)
+          end
+          raise e
         end
-        @sock.close
       end
     end
 
@@ -122,7 +84,7 @@ module RethinkDB
       protocol_version_bytes = Bytes.new(4)
       IO::ByteFormat::LittleEndian.encode(0x34c2bdc3_u32, protocol_version_bytes)
       write(protocol_version_bytes)
-      response = ConnectionResponse._from_json(read)
+      response = ConnectionResponse.from_json(read)
       raise ConnectionException.new("Connection could not be established: #{response}") if response.success != true
       response
     end
@@ -130,11 +92,11 @@ module RethinkDB
     private def authorise(user : String, password : String)
       client_nonce = Random::Secure.base64(14)
       message1 = "n,,n=#{user},r=#{client_nonce}"
-      write((AuthMessage1.new(0, "SCRAM-SHA-256", message1).to_json + "\0").to_slice)
+      write((Auth::Message1.new(0, "SCRAM-SHA-256", message1).to_json + "\0").to_slice)
       json = JSON.parse(data1 = read)
 
       if (json["success"].as_bool)
-        response = AuthMessage1SuccessResponse.from_json(data1)
+        response = Auth::Message1SuccessResponse.from_json(data1)
         combined_nonce = response.r
         salt = response.s
         iteration_count = response.i
@@ -149,125 +111,71 @@ module RethinkDB
           client_proof[i] = client_key[i] ^ client_signature[i]
         end
 
-        write((AuthMessage3.new(combined_nonce, Base64.strict_encode(client_proof)).to_json + "\0").to_slice)
+        write((Auth::Message3.new(combined_nonce, Base64.strict_encode(client_proof)).to_json + "\0").to_slice)
         json = JSON.parse(data2 = read)
         if (json["success"].as_bool)
-          AuthMessage3SuccessResponse.from_json(data2)
+          Auth::Message3SuccessResponse.from_json(data2)
         else
-          error = AuthMessageErrorResponse.from_json(data2)
+          error = Auth::MessageErrorResponse.from_json(data2)
           raise ReqlError::ReqlDriverError::ReqlAuthError.new("error_code: #{error.error_code}, error: #{error.error}")
         end
       else
-        error = AuthMessageErrorResponse.from_json(data1)
+        error = Auth::MessageErrorResponse.from_json(data1)
         raise ReqlError::ReqlDriverError::ReqlAuthError.new("error_code: #{error.error_code}, error: #{error.error}")
       end
     end
 
-    private def write(data)
-      @sock.write(data)
+    protected getter write_lock = Mutex.new(Mutex::Protection::Reentrant)
+
+    protected def write(data)
+      write_lock.synchronize {
+        sock.write(data)
+        sock.flush
+      }
     end
 
-    private def read
-      @sock.gets('\0', true).not_nil!
+    protected def read
+      sock.gets('\0', true).not_nil!
     end
 
-    def close
-      @open = false
+    @next_id : UInt64 = 1_u64
+
+    private getter id_lock = Mutex.new
+
+    protected def reset_id
+      id_lock.synchronize {
+        @next_id = 1_u64
+      }
     end
 
     protected def next_id
-      id = @next_id
-      @next_id += 1
-      id
+      id_lock.synchronize {
+        id = @next_id
+        @next_id += 1
+        id
+      }
     end
 
-    class Response
-      JSON.mapping({
-        t: ResponseType,
-        r: Array(QueryResult),
-        e: {type: ErrorType, nilable: true},
-        b: {type: Array(JSON::Any), nilable: true},
-        p: {type: JSON::Any, nilable: true},
-        n: {type: Array(ResponseNote), nilable: true},
-      })
+    private getter channel_lock = Mutex.new
 
-      def cfeed?
-        notes = (self.n || [] of ResponseNote)
-        !(notes & [ResponseNote::SEQUENCE_FEED, ResponseNote::ATOM_FEED, ResponseNote::ORDER_BY_LIMIT_FEED, ResponseNote::UNIONED_FEED]).empty?
-      end
+    protected def add_channel(id : UInt64)
+      channel = Channel(String).new
+      channel_lock.synchronize {
+        channels[id] = channel
+      }
+      channel
     end
 
-    class ResponseStream
-      getter id : UInt64
-      @channel : Channel(String)
-      @runopts : Hash(String, JSON::Any)
+    protected def delete_channel(id : UInt64)
+      channel_lock.synchronize {
+        channels.delete(id)
+      }
+    end
 
-      def initialize(@conn : Connection, runopts)
-        @id = @conn.next_id
-        @channel = @conn.@channels[id] = Channel(String).new
-        @runopts = {} of String => JSON::Any
-        runopts.each do |key, val|
-          @runopts[key] = JSON.parse(val.to_json)
-        end
-        @runopts["db"] = RethinkDB.db(@conn.@db).to_reql
-      end
-
-      def query_term(term)
-        send_query [QueryType::START, term.to_reql, @runopts].to_json
-        read_response
-      end
-
-      def query_continue
-        send_query [QueryType::CONTINUE].to_json
-        read_response
-      end
-
-      private def send_query(query)
-        if @id == 0
-          raise ReqlDriverError.new("Bug: Using already finished stream.")
-        end
-
-        @conn.@sock.write_bytes(@id, IO::ByteFormat::LittleEndian)
-        @conn.@sock.write_bytes(query.bytesize, IO::ByteFormat::LittleEndian)
-        @conn.@sock.write(query.to_slice)
-      end
-
-      private def read_response
-        response = Response.from_json(@channel.receive)
-        finish unless response.t == ResponseType::SUCCESS_PARTIAL
-
-        if response.t == ResponseType::CLIENT_ERROR
-          raise ReqlClientError.new(response.r[0].to_s)
-        elsif response.t == ResponseType::COMPILE_ERROR
-          raise ReqlCompileError.new(response.r[0].to_s)
-        elsif response.t == ResponseType::RUNTIME_ERROR
-          msg = response.r[0].to_s
-          case response.e
-          when ErrorType::QUERY_LOGIC
-            raise ReqlQueryLogicError.new(msg)
-          when ErrorType::USER
-            raise ReqlUserError.new(msg)
-          when ErrorType::NON_EXISTENCE
-            raise ReqlNonExistenceError.new(msg)
-          when ErrorType::OP_FAILED
-            raise ReqlOpFailedError.new(msg)
-          else
-            raise ReqlRunTimeError.new(response.e.to_s + ": " + msg)
-          end
-        end
-
-        response.r = response.r.map &.transformed(
-          time_format: @runopts["time_format"]?.try(&.as_s) || "native",
-          group_format: @runopts["group_format"]?.try(&.as_s) || "native",
-          binary_format: @runopts["binary_format"]?.try(&.as_s) || "native",
-        )
-
-        response
-      end
-
-      private def finish
-        @conn.@channels.delete @id
-        @id = 0u64
+    protected def reset_channels
+      channel_lock.synchronize do
+        channels.each_value &.close
+        channels.clear
       end
     end
 
@@ -304,7 +212,7 @@ module RethinkDB
       stream = ResponseStream.new(self, runopts)
       response = stream.query_term(term)
 
-      unless response.cfeed?
+      unless response.changefeed?
         raise ReqlDriverError.new("Expected SEQUENCE_FEED, ATOM_FEED, ORDER_BY_LIMIT_FEED or UNIONED_FEED but got #{response.n} ")
       end
 
@@ -314,33 +222,129 @@ module RethinkDB
 
       Cursor.new(stream, response)
     end
-  end
 
-  class Cursor
-    include Iterator(QueryResult)
+    struct ConnectionResponse < Message
+      getter max_protocol_version : Int32
+      getter min_protocol_version : Int32
+      getter server_version : String
+      getter success : Bool
 
-    def initialize(@stream : Connection::ResponseStream, @response : Connection::Response)
-      @index = 0
-    end
-
-    def fetch_next
-      @response = @stream.query_continue
-      @index = 0
-
-      unless @response.t == ResponseType::SUCCESS_SEQUENCE || @response.t == ResponseType::SUCCESS_PARTIAL
-        raise ReqlDriverError.new("Expected SUCCESS_SEQUENCE or SUCCESS_PARTIAL but got #{@response.t}")
+      def self.from_json(json)
+        raise ConnectionException.new(json) if json.nil?
+        super(json)
       end
     end
 
-    def next
-      while @index == @response.r.size
-        return stop if @response.t == ResponseType::SUCCESS_SEQUENCE
-        fetch_next
+    struct Response < Message
+      getter t : RethinkDB::ResponseType
+      getter r : Array(QueryResult)
+      getter e : ErrorType?
+      getter b : Array(JSON::Any)?
+      getter p : JSON::Any?
+      getter n : Array(RethinkDB::ResponseNote) = [] of RethinkDB::ResponseNote
+
+      private FEED_NOTES = [
+        ResponseNote::SEQUENCE_FEED,
+        ResponseNote::ATOM_FEED,
+        ResponseNote::ORDER_BY_LIMIT_FEED,
+        ResponseNote::UNIONED_FEED,
+      ]
+
+      def changefeed?
+        !(n | FEED_NOTES).empty?
       end
 
-      value = @response.r[@index]
-      @index += 1
-      value
+      protected def validate!(runopts)
+        check_errored!
+        set_formatting(runopts)
+        self
+      end
+
+      private def set_formatting(runopts)
+        r.map! &.transformed(
+          time_format: runopts["time_format"]?.try(&.as_s) || "native",
+          group_format: runopts["group_format"]?.try(&.as_s) || "native",
+          binary_format: runopts["binary_format"]?.try(&.as_s) || "native",
+        )
+      end
+
+      private def check_errored!
+        message = r[0]?.to_s
+        case t
+        when ResponseType::CLIENT_ERROR  then raise ReqlClientError.new(message)
+        when ResponseType::COMPILE_ERROR then raise ReqlCompileError.new(message)
+        when ResponseType::RUNTIME_ERROR
+          case e
+          when ErrorType::QUERY_LOGIC   then raise ReqlQueryLogicError.new(message)
+          when ErrorType::USER          then raise ReqlUserError.new(message)
+          when ErrorType::NON_EXISTENCE then raise ReqlNonExistenceError.new(message)
+          when ErrorType::OP_FAILED     then raise ReqlOpFailedError.new(message)
+          else                               raise ReqlRunTimeError.new("#{e}:#{message}")
+          end
+        end
+        self
+      end
+    end
+
+    struct ResponseStream
+      getter id : UInt64
+
+      private getter channel : Channel(String)
+
+      protected getter conn
+
+      protected getter runopts : Hash(String, JSON::Any)
+
+      def initialize(@conn : Connection, runopts)
+        @id = conn.next_id
+
+        @channel = conn.add_channel(id)
+
+        @runopts = {} of String => JSON::Any
+        runopts.each do |key, val|
+          @runopts[key] = JSON.parse(val.to_json)
+        end
+        @runopts["db"] = RethinkDB.db(conn.@db).to_reql
+      end
+
+      def query_term(term)
+        send_query [QueryType::START, term.to_reql, runopts].to_json
+        read_response
+      end
+
+      def query_continue
+        send_query [QueryType::CONTINUE].to_json
+        read_response
+      end
+
+      private def send_query(query)
+        if id == 0
+          raise ReqlDriverError.new("Bug: Using already finished stream.")
+        end
+
+        query_slice = query.to_slice
+        conn.write_lock.synchronize {
+          conn.sock.write_bytes(id, IO::ByteFormat::LittleEndian)
+          conn.sock.write_bytes(query_slice.size, IO::ByteFormat::LittleEndian)
+          conn.sock.write(query_slice)
+          conn.sock.flush
+        }
+      end
+
+      private def read_response
+        response = Response.from_json(channel.receive)
+        finish unless response.t == ResponseType::SUCCESS_PARTIAL
+
+        response.validate!(runopts)
+      rescue e
+        finish
+        raise e
+      end
+
+      private def finish
+        conn.delete_channel(id)
+        @id = 0_u64
+      end
     end
   end
 end

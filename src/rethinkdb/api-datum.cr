@@ -26,8 +26,20 @@ module RethinkDB
       DatumTerm.new(TermType::MERGE, [self, Func.arity1 { |row| yield(row) }])
     end
 
+    def set_difference(value)
+      DatumTerm.new(TermType::SET_DIFFERENCE, [self, value])
+    end
+
+    def set_intersection(value)
+      DatumTerm.new(TermType::SET_INTERSECTION, [self, value])
+    end
+
     def set_insert(value)
       DatumTerm.new(TermType::SET_INSERT, [self, value])
+    end
+
+    def set_union(value)
+      DatumTerm.new(TermType::SET_UNION, [self, value])
     end
 
     def default(value)
@@ -226,6 +238,10 @@ module RethinkDB
       DatumTerm.new(TermType::SPLICE_AT, [self, index, array])
     end
 
+    def delete
+      DatumTerm.new(TermType::DELETE, [self])
+    end
+
     def delete_at(index)
       DatumTerm.new(TermType::DELETE_AT, [self, index])
     end
@@ -397,7 +413,7 @@ module RethinkDB
     def between(a, b)
       DatumTerm.new(TermType::BETWEEN, [self, a, b])
     end
-    
+
     def between(a, b, options : Hash | NamedTuple)
       DatumTerm.new(TermType::BETWEEN, [self, a, b], options)
     end
