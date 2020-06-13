@@ -37,4 +37,5 @@ describe RethinkDB do
   # {{ run("./reql_spec_generator", "spec/rql_test/src/mutation/update.yaml") }}
   # {{ run("./reql_spec_generator", "spec/rql_test/src/range.yaml") }}
   # {{ run("./reql_spec_generator", "spec/rql_test/src/selection.yaml") }}
+  {{ run("./reql_spec_generator", "spec/rql_test/src/times/api.yaml") }}
 end

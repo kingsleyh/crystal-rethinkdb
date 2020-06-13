@@ -118,6 +118,94 @@ module RethinkDB
     DatumTerm.new(TermType::LITERAL, [any])
   end
 
+  def self.time(*args)
+    DatumTerm.new(TermType::TIME, args.to_a)
+  end
+
+  def self.iso8601(a)
+    DatumTerm.new(TermType::ISO8601, [a])
+  end
+
+  def self.iso8601(a, **options)
+    DatumTerm.new(TermType::ISO8601, [a], options)
+  end
+
+  def self.monday
+    DatumTerm.new(TermType::MONDAY)
+  end
+
+  def self.tuesday
+    DatumTerm.new(TermType::TUESDAY)
+  end
+
+  def self.wednesday
+    DatumTerm.new(TermType::WEDNESDAY)
+  end
+
+  def self.thursday
+    DatumTerm.new(TermType::THURSDAY)
+  end
+
+  def self.friday
+    DatumTerm.new(TermType::FRIDAY)
+  end
+
+  def self.saturday
+    DatumTerm.new(TermType::SATURDAY)
+  end
+
+  def self.sunday
+    DatumTerm.new(TermType::SUNDAY)
+  end
+
+  def self.january
+    DatumTerm.new(TermType::JANUARY)
+  end
+
+  def self.february
+    DatumTerm.new(TermType::FEBRUARY)
+  end
+
+  def self.march
+    DatumTerm.new(TermType::MARCH)
+  end
+
+  def self.april
+    DatumTerm.new(TermType::APRIL)
+  end
+
+  def self.may
+    DatumTerm.new(TermType::MAY)
+  end
+
+  def self.june
+    DatumTerm.new(TermType::JUNE)
+  end
+
+  def self.july
+    DatumTerm.new(TermType::JULY)
+  end
+
+  def self.august
+    DatumTerm.new(TermType::AUGUST)
+  end
+
+  def self.september
+    DatumTerm.new(TermType::SEPTEMBER)
+  end
+
+  def self.october
+    DatumTerm.new(TermType::OCTOBER)
+  end
+
+  def self.november
+    DatumTerm.new(TermType::NOVEMBER)
+  end
+
+  def self.december
+    DatumTerm.new(TermType::DECEMBER)
+  end
+
   macro define_prefix_notation(*names)
     {% for name in names %}
       def self.{{name.id}}(target, *args, **kargs)

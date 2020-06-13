@@ -429,5 +429,65 @@ module RethinkDB
     def date
       DatumTerm.new(TermType::DATE, [self])
     end
+
+    def year
+      DatumTerm.new(TermType::YEAR, [self])
+    end
+
+    def month
+      DatumTerm.new(TermType::MONTH, [self])
+    end
+
+    def day
+      DatumTerm.new(TermType::DAY, [self])
+    end
+
+    def hours
+      DatumTerm.new(TermType::HOURS, [self])
+    end
+
+    def minutes
+      DatumTerm.new(TermType::MINUTES, [self])
+    end
+
+    def seconds
+      DatumTerm.new(TermType::SECONDS, [self])
+    end
+
+    def to_epoch_time
+      DatumTerm.new(TermType::EPOCH_TIME, [self])
+    end
+
+    def to_epoch_time(a)
+      DatumTerm.new(TermType::EPOCH_TIME, [self, a])
+    end
+
+    def during(a, b)
+      DatumTerm.new(TermType::DURING, [self, a, b])
+    end
+
+    def during(a, b, **options)
+      DatumTerm.new(TermType::DURING, [self, a, b], options)
+    end
+
+    def time_of_day
+      DatumTerm.new(TermType::TIME_OF_DAY, [self])
+    end
+
+    def day_of_week
+      DatumTerm.new(TermType::DAY_OF_WEEK, [self])
+    end
+
+    def day_of_year
+      DatumTerm.new(TermType::DAY_OF_YEAR, [self])
+    end
+
+    def timezone
+      DatumTerm.new(TermType::TIMEZONE, [self])
+    end
+
+    def in_timezone(a)
+      DatumTerm.new(TermType::IN_TIMEZONE, [self, a])
+    end
   end
 end
