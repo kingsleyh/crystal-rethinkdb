@@ -1,5 +1,5 @@
 require "json"
-require "retriable"
+require "simple_retry"
 require "socket"
 require "socket/tcp_socket"
 
@@ -52,7 +52,7 @@ module RethinkDB
     end
 
     private def read_loop
-      Retriable.retry(max_interval: max_retry_interval, max_attempts: max_retry_attempts) do
+      SimpleRetry.try_to(base_interval: 10.milliseconds, max_interval: max_retry_interval, max_attempts: max_retry_attempts) do
         begin
           while open?
             id = sock.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
