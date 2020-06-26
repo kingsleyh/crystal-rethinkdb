@@ -1,5 +1,5 @@
 name: rethinkdb
-version: 0.2.4
+version: 0.2.0
 crystal: 0.34.0
 license: MIT
 
@@ -10,4 +10,4 @@ dependencies:
 
 authors:
   - Kingsley Hendrickse <kingsley.hendrickse@gmail.com>
-  - Caspian Baska <caspianbaska@gmail.com>
+  - Caspian Baska <caspian@place.tech>
