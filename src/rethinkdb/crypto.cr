@@ -40,5 +40,5 @@ end
 def sha256(data)
   digest = OpenSSL::Digest.new("SHA256")
   digest.update(data)
-  digest.digest
+  digest.final
 end
