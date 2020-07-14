@@ -1,4 +1,5 @@
 require "json"
+require "log"
 require "retriable"
 require "socket"
 require "socket/tcp_socket"
@@ -13,6 +14,8 @@ require "./serialization"
 
 module RethinkDB
   class Connection
+    Log = ::Log.for(self)
+
     # Authentication
     getter user
     private getter password
@@ -65,16 +68,9 @@ module RethinkDB
           end
           sock.close
         rescue e
+          Log.error(exception: e) { "reconnecting" }
           sock.close
-          write_lock.synchronize do
-            reset_channels
-            reset_id
-            # Create a new socket
-            @sock = TCPSocket.new(host, port)
-            sock.sync = false
-            connect
-            authorise(user, password)
-          end
+          write_lock.synchronize { reconnect }
           raise e
         end
       end
@@ -128,14 +124,37 @@ module RethinkDB
     protected getter write_lock = Mutex.new(Mutex::Protection::Reentrant)
 
     protected def write(data)
-      write_lock.synchronize {
+      try_write do
         sock.write(data)
         sock.flush
+      end
+    end
+
+    protected def reconnect
+      reset_channels
+      reset_id
+      # Create a new socket
+      @sock = TCPSocket.new(host, port)
+      sock.sync = false
+      connect
+      authorise(user, password)
+    end
+
+    protected def try_write
+      write_lock.synchronize {
+        yield
       }
+    rescue e
+      # Retry in the read loop
+      sock.close
+      raise e
     end
 
     protected def read
       sock.gets('\0', true).not_nil!
+    rescue e : NilAssertionError
+      sock.close
+      raise ConnectionException.new("Socket closed")
     end
 
     @next_id : UInt64 = 1_u64
@@ -323,12 +342,12 @@ module RethinkDB
         end
 
         query_slice = query.to_slice
-        conn.write_lock.synchronize {
+        conn.try_write do
           conn.sock.write_bytes(id, IO::ByteFormat::LittleEndian)
           conn.sock.write_bytes(query_slice.size, IO::ByteFormat::LittleEndian)
           conn.sock.write(query_slice)
           conn.sock.flush
-        }
+        end
       end
 
       private def read_response

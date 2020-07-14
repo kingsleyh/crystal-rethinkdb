@@ -1,6 +1,6 @@
 name: rethinkdb
-version: 0.2.0
-crystal: 0.34.0
+version: 0.2.1
+crystal: ~> 0.34
 license: MIT
 
 dependencies:

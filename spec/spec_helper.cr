@@ -1,6 +1,12 @@
 require "spec"
+require "log"
+
 require "../src/crystal-rethinkdb"
 include RethinkDB::Shortcuts
+
+Spec.before_suite do
+  ::Log.setup "*", Log::Severity::Debug
+end
 
 module Generators
   @@i = 0
