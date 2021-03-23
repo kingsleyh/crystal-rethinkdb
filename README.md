@@ -2,7 +2,7 @@
 
 This is a [RethinkDB](http://rethinkdb.com/) Driver for the [Crystal Language](http://crystal-lang.org/).
 
-[![Build Status](https://travis-ci.org/kingsleyh/crystal-rethinkdb.svg?branch=master)](https://travis-ci.org/kingsleyh/crystal-rethinkdb) [![Crystal Version](https://img.shields.io/badge/crystal%20-0.35.1-brightgreen.svg)](https://crystal-lang.org/api/0.35.1/)
+[![Build Status](https://travis-ci.org/kingsleyh/crystal-rethinkdb.svg?branch=master)](https://travis-ci.org/kingsleyh/crystal-rethinkdb) [![Crystal Version](https://img.shields.io/badge/crystal%20-1.0.0-brightgreen.svg)](https://crystal-lang.org/api/1.0.0/)
 
 ## Installation
 

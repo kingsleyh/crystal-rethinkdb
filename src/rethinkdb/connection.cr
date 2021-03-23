@@ -255,11 +255,20 @@ module RethinkDB
     end
 
     struct Response < Message
+      {% if compare_versions(Crystal::VERSION, "0.36.1") == 1 %}
+        @[JSON::Field(converter: Enum::ValueConverter(RethinkDB::ResponseType))]
+      {% end %}
       getter t : RethinkDB::ResponseType
       getter r : Array(QueryResult)
+      {% if compare_versions(Crystal::VERSION, "0.36.1") == 1 %}
+        @[JSON::Field(converter: Enum::ValueConverter(RethinkDB::ErrorType))]
+      {% end %}
       getter e : ErrorType?
       getter b : Array(JSON::Any)?
       getter p : JSON::Any?
+      {% if compare_versions(Crystal::VERSION, "0.36.1") == 1 %}
+        @[JSON::Field(converter: ArrayConverter(Enum::ValueConverter(RethinkDB::ResponseNote)))]
+      {% end %}
       getter n : Array(RethinkDB::ResponseNote) = [] of RethinkDB::ResponseNote
 
       private FEED_NOTES = [
@@ -327,21 +336,21 @@ module RethinkDB
       end
 
       def query_term(term)
-        send_query [QueryType::START, term.to_reql, runopts].to_json
+        send_query QueryType::START, term.to_reql, runopts
         read_response
       end
 
       def query_continue
-        send_query [QueryType::CONTINUE].to_json
+        send_query QueryType::CONTINUE
         read_response
       end
 
-      private def send_query(query)
+      private def send_query(type : QueryType, *rest)
         if id == 0
           raise ReqlDriverError.new("Bug: Using already finished stream.")
         end
 
-        query_slice = query.to_slice
+        query_slice = ({type.value} + rest).to_json.to_slice
         conn.try_write do
           conn.sock.write_bytes(id, IO::ByteFormat::LittleEndian)
           conn.sock.write_bytes(query_slice.size, IO::ByteFormat::LittleEndian)

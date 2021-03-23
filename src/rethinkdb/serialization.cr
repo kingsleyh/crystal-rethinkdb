@@ -8,7 +8,7 @@ class Array(T)
   def to_reql
     JSON.parse([
       RethinkDB::TermType::MAKE_ARRAY.to_i64,
-      map { |x| x.to_reql },
+      map &.to_reql,
     ].to_json)
   end
 end
@@ -17,7 +17,7 @@ struct Tuple
   def to_reql
     JSON.parse([
       RethinkDB::TermType::MAKE_ARRAY.to_i64,
-      to_a.map { |x| x.to_reql },
+      to_a.map &.to_reql,
     ].to_json)
   end
 end
