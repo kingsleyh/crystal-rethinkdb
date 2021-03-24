@@ -1,24 +1,31 @@
 require "json"
-require "./term"
 require "uuid"
+
+require "./term"
 
 alias ReqlType = Nil | Bool | Int64 | Float64 | String | UUID | Array(ReqlType) | Hash(String, ReqlType)
 
 class Array(T)
   def to_reql
-    JSON.parse([
-      RethinkDB::TermType::MAKE_ARRAY.to_i64,
-      map &.to_reql,
-    ].to_json)
+    JSON::Any.new([
+      RethinkDB::TermType::MAKE_ARRAY.to_reql,
+      ::JSON::Any.new(map(&.to_reql.as(::JSON::Any))),
+    ])
   end
 end
 
 struct Tuple
   def to_reql
-    JSON.parse([
-      RethinkDB::TermType::MAKE_ARRAY.to_i64,
-      to_a.map &.to_reql,
-    ].to_json)
+    ::JSON::Any.new([
+      RethinkDB::TermType::MAKE_ARRAY.to_reql,
+      ::JSON::Any.new(map(&.to_reql.as(::JSON::Any)).to_a),
+    ])
+  end
+end
+
+struct JSON::Any
+  def to_reql
+    self
   end
 end
 
@@ -30,68 +37,68 @@ end
 
 class Hash(K, V)
   def to_reql
-    hash = {} of String => JSON::Any
+    hash = {} of String => ::JSON::Any
     each do |k, v|
       hash[k.to_s] = v.to_reql
     end
-    JSON.parse(hash.to_json)
+    ::JSON::Any.new(hash)
   end
 end
 
 struct NamedTuple
   def to_reql
-    hash = {} of String => JSON::Any
+    hash = {} of String => ::JSON::Any
     each do |k, v|
       hash[k.to_s] = v.to_reql
     end
-    JSON.parse(hash.to_json)
+    ::JSON::Any.new(hash)
   end
 end
 
 struct Nil
   def to_reql
-    JSON.parse(self.to_json)
+    ::JSON::Any.new(self)
   end
 end
 
 struct Int
   def to_reql
-    JSON.parse(to_i64.to_json)
+    ::JSON::Any.new(to_i64)
   end
 end
 
 struct Float
   def to_reql
-    JSON.parse(to_f64.to_json)
+    ::JSON::Any.new(to_f64)
   end
 end
 
 class String
   def to_reql
-    JSON.parse(self.to_json)
+    ::JSON::Any.new(self)
   end
 end
 
 struct Symbol
   def to_reql
-    JSON.parse(to_s.to_json)
+    to_s.to_reql
   end
 end
 
 struct Bool
   def to_reql
-    JSON.parse(self.to_json)
+    ::JSON::Any.new(self)
   end
 end
 
 struct Time
   def to_reql
-    JSON.parse({"$reql_type$" => "TIME", "timezone" => "+00:00", "epoch_time" => to_utc.to_unix}.to_json)
+    {"$reql_type$": "TIME", timezone: "+00:00", epoch_time: to_utc.to_unix}.to_reql
   end
 
   struct Span
     def to_reql
-      JSON.parse(to_i.to_i64.to_json)
+      to_i.to_reql
     end
   end
 end
@@ -101,7 +108,7 @@ module RethinkDB
     alias Type = Nil | Bool | Int64 | Float64 | String | Time | Array(QueryResult) | Hash(String, QueryResult)
     property raw : Type
 
-    def self.new(pull : JSON::PullParser)
+    def self.new(pull : ::JSON::PullParser)
       case pull.kind
       when .null?
         new pull.read_null

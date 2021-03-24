@@ -346,9 +346,7 @@ module RethinkDB
       end
 
       private def send_query(type : QueryType, *rest)
-        if id == 0
-          raise ReqlDriverError.new("Bug: Using already finished stream.")
-        end
+        raise ReqlDriverError.new("Bug: Using already finished stream.") if id.zero?
 
         query_slice = ({type.value} + rest).to_json.to_slice
         conn.try_write do

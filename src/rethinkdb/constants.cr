@@ -1,3 +1,5 @@
+require "json"
+
 module RethinkDB
   enum Version
     V0_1 = 0x3f61ba36
@@ -237,5 +239,9 @@ module RethinkDB
     BIT_NOT            = 194
     BIT_SAL            = 195
     BIT_SAR            = 196
+
+    def to_reql
+      ::JSON::Any.new(value.to_i64)
+    end
   end
 end
