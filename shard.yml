@@ -1,12 +1,12 @@
 name: rethinkdb
-version: 0.2.2
+version: 0.2.3
 crystal: ">= 0.34"
 license: MIT
 
 dependencies:
   retriable:
     github: sija/retriable.cr
-    version: ~> 0.2.0
+    version: ~> 0.2
 
 authors:
   - Kingsley Hendrickse <kingsley.hendrickse@gmail.com>

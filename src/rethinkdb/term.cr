@@ -9,24 +9,22 @@ module RethinkDB
     end
 
     def initialize(type : RethinkDB::TermType)
-      @reql = ::JSON.parse([type.to_i64].to_json)
+      @reql = ::JSON::Any.new([type.to_reql])
     end
 
     def initialize(type : RethinkDB::TermType, args : Array)
-      args = args.map(&.to_reql.as(JSON::Any))
-      @reql = JSON.parse([
-        type.to_i64,
-        args,
-      ].to_json)
+      @reql = ::JSON::Any.new([
+        type.to_reql,
+        ::JSON::Any.new(args.map(&.to_reql.as(JSON::Any))),
+      ])
     end
 
     def initialize(type : RethinkDB::TermType, args : Array, options)
-      args = args.map(&.to_reql.as(JSON::Any))
-      @reql = JSON.parse([
-        type.to_i64,
-        args,
+      @reql = ::JSON::Any.new([
+        type.to_reql,
+        ::JSON::Any.new(args.map(&.to_reql.as(JSON::Any))),
         options.to_reql,
-      ].to_json)
+      ])
     end
 
     def to_reql
