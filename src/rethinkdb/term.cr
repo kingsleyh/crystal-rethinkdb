@@ -5,11 +5,11 @@ module RethinkDB
     @reql : JSON::Any
 
     def initialize(any : JSON::Any)
-      @reql = JSON.parse(any.to_json)
+      @reql = any
     end
 
     def initialize(type : RethinkDB::TermType)
-      @reql = JSON.parse([type.to_i64].to_json)
+      @reql = ::JSON.parse([type.to_i64].to_json)
     end
 
     def initialize(type : RethinkDB::TermType, args : Array)
