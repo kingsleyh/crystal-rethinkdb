@@ -381,6 +381,14 @@ module RethinkDB
     def contains
       DatumTerm.new(TermType::CONTAINS, [self, Func.arity1 { |row| yield(row) }])
     end
+    
+    def match(other)
+      DatumTerm.new(TermType::MATCH, [self, other])
+    end
+    
+    def match
+      DatumTerm.new(TermType::MATCH, [self, Func.arity1 { |row| yield(row) }])
+    end
 
     def has_fields(*other)
       DatumTerm.new(TermType::HAS_FIELDS, [self] + other.to_a)
