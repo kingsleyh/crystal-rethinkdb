@@ -1,6 +1,6 @@
 name: rethinkdb
 version: 0.2.3
-crystal: ">= 0.34"
+crystal: ">= 0.35.1"
 license: MIT
 
 dependencies:
