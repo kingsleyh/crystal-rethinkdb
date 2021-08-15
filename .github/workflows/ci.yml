@@ -1,0 +1,83 @@
+name: CI
+on:
+  push:
+  schedule:
+    - cron: "0 0 * * *" # Nightly at midnight
+
+jobs:
+  style:
+    name: Style
+    runs-on: ubuntu-latest
+    container: crystallang/crystal:latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Format
+        run: crystal tool format --check
+      - name: Lint
+        uses: crystal-ameba/github-action@v0.2.12
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test:
+    runs-on: ubuntu-latest
+    name: "Test - crystal: ${{ matrix.crystal }}, MT: ${{ matrix.MT }}, stable: ${{ matrix.stable }}"
+    continue-on-error: ${{ !matrix.stable }}
+    strategy:
+      fail-fast: false
+      matrix:
+        crystal:
+          - 0.34.0
+          - 0.36.1
+          - 1.0.0
+          - 1.1.1
+        stable: [true]
+        MT: [false]
+        include:
+          - crystal: 1.1.1
+            MT: true
+            stable: false
+          - crystal: nightly
+            MT: true
+            stable: false
+          - crystal: nightly
+            MT: false
+            stable: false
+    services:
+      rethink:
+        image: rethinkdb:2.4
+        ports:
+          - 29015:29015
+          - 28015:28015
+    steps:
+      - uses: actions/checkout@v2
+      - uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: ${{ matrix.crystal }}
+      - name: Up open file limit
+        run: ulimit -n 10000
+      - run: shards install --ignore-crystal-version
+      - name: Test
+        if: ${{ !matrix.MT }}
+        run: crystal spec --error-trace -v --no-color
+      - name: Test Multithreading
+        if: ${{ matrix.MT }}
+        run: crystal spec --error-trace -v --no-color -Dpreview_mt
+
+  publish:
+    name: Publish Documentation
+    if: contains('refs/tags', github.ref)
+    runs-on: ubuntu-latest
+    container: crystallang/crystal:latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: shards install --ignore-crystal-version
+      - name: Run `crystal docs`
+        run: https://github.com/kingsleyh/crystal-rethinkdb/tree/$(shards version)
+      - name: Publish to GitHub Pages
+        uses: crazy-max/ghaction-github-pages@v2
+        with:
+          target_branch: docs
+          build_dir: docs
+          commit_message: "Update docs for ${{ github.ref }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
