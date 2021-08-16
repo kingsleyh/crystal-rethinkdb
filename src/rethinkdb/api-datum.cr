@@ -262,6 +262,14 @@ module RethinkDB
       DatumTerm.new(TermType::FILTER, [self, Func.arity1 { |row| yield(row) }], kargs)
     end
 
+    def concat_map(callable)
+      DatumTerm.new(TermType::CONCAT_MAP, [self, callable])
+    end
+
+    def concat_map
+      DatumTerm.new(TermType::CONCAT_MAP, [self, Func.arity1 { |row| yield(row) }])
+    end
+
     def map(callable)
       DatumTerm.new(TermType::MAP, [self, callable])
     end
@@ -381,11 +389,11 @@ module RethinkDB
     def contains
       DatumTerm.new(TermType::CONTAINS, [self, Func.arity1 { |row| yield(row) }])
     end
-    
+
     def match(other)
       DatumTerm.new(TermType::MATCH, [self, other])
     end
-    
+
     def match
       DatumTerm.new(TermType::MATCH, [self, Func.arity1 { |row| yield(row) }])
     end
