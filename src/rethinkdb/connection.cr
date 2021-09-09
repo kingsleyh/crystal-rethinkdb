@@ -55,7 +55,7 @@ module RethinkDB
     end
 
     private def read_loop
-      Retriable.retry(max_interval: max_retry_interval, max_attempts: max_retry_attempts) do
+      Retriable.retry(max_interval: max_retry_interval) do
         begin
           while open?
             id = sock.read_bytes(UInt64, IO::ByteFormat::LittleEndian)
@@ -70,7 +70,7 @@ module RethinkDB
         rescue e
           Log.error(exception: e) { "reconnecting" }
           sock.close
-          write_lock.synchronize { reconnect }
+          reconnect
           raise e
         end
       end
@@ -131,13 +131,18 @@ module RethinkDB
     end
 
     protected def reconnect
-      reset_channels
-      reset_id
-      # Create a new socket
-      @sock = TCPSocket.new(host, port)
-      sock.sync = false
-      connect
-      authorise(user, password)
+      write_lock.synchronize do
+        return unless sock.closed?
+
+        reset_channels
+        reset_id
+
+        # Create a new socket
+        @sock = TCPSocket.new(host, port)
+        sock.sync = false
+        connect
+        authorise(user, password)
+      end
     end
 
     protected def try_write
@@ -145,8 +150,8 @@ module RethinkDB
         yield
       }
     rescue e
-      # Retry in the read loop
       sock.close
+      reconnect
       raise e
     end
 
