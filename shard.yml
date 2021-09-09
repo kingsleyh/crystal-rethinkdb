@@ -1,5 +1,5 @@
 name: rethinkdb
-version: 0.3.0
+version: 0.3.1
 crystal: ">= 0.35.1"
 license: MIT
 
