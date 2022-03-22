@@ -2,6 +2,10 @@ require "./term"
 
 module RethinkDB
   class RowsTerm < StreamTerm
+    def is_empty
+      DatumTerm.new(TermType::IS_EMPTY, [self])
+    end
+
     def update
       DatumTerm.new(TermType::UPDATE, [self, Func.arity1 { |row| yield(row) }])
     end

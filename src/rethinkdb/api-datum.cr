@@ -210,6 +210,10 @@ module RethinkDB
       DatumTerm.new(TermType::GET_FIELD, [self, key])
     end
 
+    def is_empty
+      DatumTerm.new(TermType::IS_EMPTY, [self])
+    end
+
     def nth(key)
       DatumTerm.new(TermType::NTH, [self, key])
     end
