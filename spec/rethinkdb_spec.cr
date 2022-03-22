@@ -117,7 +117,7 @@ describe RethinkDB do
         cursor.each do |v|
           old_times = v["old_val"]["times"].as_i
           new_times = v["new_val"]["times"].as_i
-          new_times.should eq (old_times + 1)
+          new_times.should eq(old_times + 1)
           results << v
         end
       rescue e
