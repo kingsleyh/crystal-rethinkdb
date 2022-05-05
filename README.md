@@ -5,6 +5,26 @@ This is a [RethinkDB](http://rethinkdb.com/) Driver for the [Crystal Language](h
 [![CI](https://github.com/kingsleyh/crystal-rethinkdb/actions/workflows/ci.yml/badge.svg)](https://github.com/kingsleyh/crystal-rethinkdb/actions/workflows/ci.yml)
 [![Crystal Version](https://img.shields.io/badge/crystal%20-1.1.1-brightgreen.svg)](https://crystal-lang.org/api/1.1.1/)
 
+## Table of Contents
+
+<!-- Generated with `mdtoc --inplace` -->
+<!-- See https://github.com/kubernetes-sigs/mdtoc -->
+<!-- toc -->
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Connecting as a user](#connecting-as-a-user)
+  - [Useful Queries](#useful-queries)
+        - [Inserting](#inserting)
+        - [Finding All](#finding-all)
+        - [Finding One](#finding-one)
+        - [Updates](#updates)
+        - [Creating a database](#creating-a-database)
+  - [Telemetry](#telemetry)
+  - [Contributing](#contributing)
+  - [Contributors](#contributors)
+- [Thanks](#thanks)
+<!-- /toc -->
+
 ## Installation
 
 Add this to your application's `shard.yml`:
@@ -185,6 +205,19 @@ def recreate_database
 
   puts "done"
 end
+
+```
+
+## Telemetry
+
+In order to instrument your application with OpenTelemetry, you must install the [opentelemetry-instrumentation](https://github.com/wyhaines/opentelemetry-instrumentation.cr) shard.
+
+Ensure that `OpenTelemetry::Instrumentation::Instrument` is in scope _before_ requiring the telemetry file, and _after_ the `rethinkdb` library is required.
+
+```crystal
+require "rethinkdb"
+require "opentelemetry-instrumentation/src/opentelemetry/instrumentation/instrument"
+require "rethinkdb/telemetry"
 ```
 
 ## Contributing
